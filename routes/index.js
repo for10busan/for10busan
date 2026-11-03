@@ -1,0 +1,10 @@
+import './auth.js';
+import './admin-home.js';
+import './classes.js';
+import './admin-people.js';
+import './account.js';
+import './students.js';
+import './videos.js';
+import './exercises.js';
+import './admissions.js';
+import './community.js';

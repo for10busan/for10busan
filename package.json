@@ -1,0 +1,14 @@
+{
+  "name": "for10-busan",
+  "version": "1.0.0",
+  "description": "포텐체대입시 부산교육원 — 출결·운동일지·AI 자세 분석·입시 관리 앱",
+  "type": "module",
+  "private": true,
+  "engines": { "node": ">=22.13" },
+  "scripts": {
+    "start": "node --no-warnings --env-file-if-exists=.env server.js",
+    "dev": "node --no-warnings --env-file-if-exists=.env --watch server.js",
+    "seed": "node --no-warnings --env-file-if-exists=.env scripts/seed.js",
+    "test": "node --no-warnings --test test/analyze.test.js"
+  }
+}
