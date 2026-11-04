@@ -211,7 +211,7 @@ get('/admin/universities', 'staff', ctx => {
   <details class="card"><summary>엑셀에서 붙여 넣어 한 번에 채우기${icon('down')}</summary>
     <form method="post" action="/admin/universities/import">${csrfField(ctx)}
     <p class="small muted mt0">엑셀 첫 줄에 아래 제목 중 필요한 것만 넣고, 표를 통째로 복사해서 붙여 넣으세요. <b>대학</b>과 <b>학과</b>가 같은 줄은 내용을 고치고, 없으면 새로 만들어요.</p>
-    <p class="small" style="background:#f6f7f9;border-radius:8px;padding:8px">대학 · 학과 · 전형구분(수시/정시) · 전형유형 · 전형명 · 시도 · 시군구 · 설립 · 모집인원 · 단계 · 내신비율 · 실기비율 · 수능비율 · 수능최저 · 내신만점 · 실기만점 · 실기날짜 · 면접날짜 · 교직 · 실기종목(쉼표로) · 최초합 · 최종합 · 학년도</p>
+    <p class="small" style="background:#f6f7f9;border-radius:8px;padding:8px">대학 · 학과 · 전형구분(수시/정시) · 전형유형 · 전형명 · 시도 · 시군구 · 설립 · 모집인원 · 단계 · 내신비율 · 실기비율 · 수능비율 · 수능최저 · 내신만점 · 실기만점 · 실기날짜 · 면접날짜 · 교직 · 실기종목(쉼표로) · 학년별반영 · 반영교과 · 교과별반영 · 반영과목 · 변경사항 · 메모 · 최초합 · 최종합 · 학년도</p>
     <textarea name="paste" rows="6" placeholder="대학	학과	전형구분	전형명	시도	모집인원	내신비율	실기비율	실기종목	최초합	최종합	학년도"></textarea>
     <button class="btn full mt8">${icon('upload')}불러오기</button></form></details>
   <form class="flex mb8"><input type="search" name="q" value="${q}" placeholder="대학·학과 검색"><button class="btn sm dark" style="height:44px">${icon('search')}</button></form>
@@ -227,7 +227,7 @@ post('/admin/universities', 'staff', ctx => {
 });
 post('/admin/universities/import', 'staff', ctx => {
   const lines = (ctx.body.paste || '').split(/\r?\n/).filter(l => l.trim()); if (lines.length < 2) bad('제목 줄과 내용 줄을 함께 붙여 넣어 주세요.');
-  const H = { '대학': 'name', '학과': 'dept', '전형구분': 'admission', '전형유형': 'track_type', '전형명': 'track', '시도': 'region', '시군구': 'city', '설립': 'founding', '모집인원': 'quota', '단계': 'stage', '내신비율': 'school_ratio', '실기비율': 'practical_ratio', '수능비율': 'suneung_ratio', '수능최저': 'suneung_min', '내신만점': 'school_max', '실기만점': 'practical_max', '수능만점': 'suneung_max', '실기날짜': 'practical_date', '면접날짜': 'interview_date', '교직': 'teacher_cert', '실기종목': 'exercises', '최초합': 'cutoff', '최종합': 'final', '학년도': 'year' };
+  const H = { '대학': 'name', '학과': 'dept', '전형구분': 'admission', '전형유형': 'track_type', '전형명': 'track', '시도': 'region', '시군구': 'city', '설립': 'founding', '모집인원': 'quota', '단계': 'stage', '내신비율': 'school_ratio', '실기비율': 'practical_ratio', '수능비율': 'suneung_ratio', '수능최저': 'suneung_min', '내신만점': 'school_max', '실기만점': 'practical_max', '수능만점': 'suneung_max', '실기날짜': 'practical_date', '면접날짜': 'interview_date', '교직': 'teacher_cert', '실기종목': 'exercises', '최초합': 'cutoff', '최종합': 'final', '학년도': 'year', '학년별반영': 'year_weights', '반영교과': 'subjects', '교과별반영': 'subject_weights', '반영과목': 'subject_scope', '변경사항': 'changes', '메모': 'memo' };
   const head = lines[0].split('\t').map(h => H[h.trim().replace(/\s/g, '')] || null);
   if (!head.includes('name')) bad('첫 줄에 "대학" 제목이 있어야 해요.');
   const exs = all('SELECT id,name FROM exercises'); const findEx = n => { const k = n.replace(/\s/g, ''); return exs.find(e => e.name.replace(/\s/g, '') === k || k.includes(e.name.replace(/\s/g, '')) || e.name.replace(/\s/g, '').includes(k))?.id; };
@@ -236,12 +236,13 @@ post('/admin/universities/import', 'staff', ctx => {
     const c = line.split('\t'); const o = {}; head.forEach((k, i) => { if (k) o[k] = (c[i] || '').trim(); }); if (!o.name) continue;
     const adm = o.admission === '정시' ? '정시' : '수시';
     let u = one('SELECT * FROM universities WHERE name=? AND IFNULL(dept,\'\')=? AND admission=? AND IFNULL(track,\'\')=IFNULL(?,\'\')', o.name, o.dept || '', adm, o.track || null);
+    if (!u && o.track) { u = one('SELECT * FROM universities WHERE name=? AND IFNULL(dept,\'\')=? AND admission=? AND track IS NULL', o.name, o.dept || '', adm); if (u) run('UPDATE universities SET track=? WHERE id=?', o.track, u.id); }
     if (!u) { u = { id: Number(run('INSERT INTO universities(name,dept,admission,track,is_sample) VALUES(?,?,?,?,0)', o.name, o.dept || null, adm, o.track || null).lastInsertRowid) }; made++; } else upd++;
     const set = []; const vals = [];
-    for (const k of ['track_type', 'region', 'city', 'founding', 'stage', 'suneung_min', 'practical_date', 'interview_date']) if (o[k]) { set.push(k + '=?'); vals.push(o[k]); }
+    for (const k of ['track_type', 'region', 'city', 'founding', 'stage', 'suneung_min', 'practical_date', 'interview_date', 'year_weights', 'subjects', 'subject_weights', 'subject_scope', 'changes', 'memo']) if (o[k] && o[k] !== '-') { set.push(k + '=?'); vals.push(o[k]); }
     for (const k of ['quota', 'school_ratio', 'practical_ratio', 'suneung_ratio', 'school_max', 'practical_max', 'suneung_max']) if (num(o[k]) != null) { set.push(k + '=?'); vals.push(num(o[k])); }
     if (o.teacher_cert) { set.push('teacher_cert=?'); vals.push(/^(o|y|1|교직|예|가능)/i.test(o.teacher_cert) ? 1 : 0); }
-    if (o.exercises) { set.push('exercises=?'); vals.push(JSON.stringify(o.exercises.split(/[,·/]/).map(x => findEx(x.trim())).filter(Boolean))); }
+    if (o.exercises && o.exercises !== '-') { const ids = o.exercises.split(/[,·/]/).map(x => findEx(x.trim())).filter(Boolean); if (ids.length) { set.push('exercises=?'); vals.push(JSON.stringify(ids)); } }
     if (set.length) run(`UPDATE universities SET ${set.join(',')} WHERE id=?`, ...vals, u.id);
     if (num(o.cutoff) != null) run('INSERT INTO cutoffs(university_id,year,cutoff,final) VALUES(?,?,?,?) ON CONFLICT(university_id,year) DO UPDATE SET cutoff=excluded.cutoff, final=excluded.final', u.id, Number(o.year) || Number(today().slice(0, 4)) + 1, num(o.cutoff), num(o.final));
   } });
