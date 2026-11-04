@@ -21,7 +21,7 @@ img{max-width:100%}
 .ibtn{position:relative;display:inline-grid;place-items:center;width:38px;height:38px;border-radius:10px;background:none;border:0;color:#e9eaee;cursor:pointer}
 .ibtn:hover{background:#1f2023}
 .badge{position:absolute;top:3px;right:2px;min-width:17px;height:17px;padding:0 4px;border-radius:9px;background:var(--red);color:#fff;font-size:10.5px;font-weight:700;line-height:17px;text-align:center}
-.nav{border-top:1px solid #1d1e21}
+.nav{display:none}
 .nav-in{max-width:var(--w);margin:0 auto;display:flex;gap:4px;overflow-x:auto;scrollbar-width:none;padding:0 8px}
 .nav-in::-webkit-scrollbar{display:none}
 .nav a{flex:none;padding:11px 9px 10px;font-size:14px;font-weight:600;color:#cfd2d8;border-bottom:3px solid transparent;white-space:nowrap}
@@ -225,3 +225,22 @@ details.card[open]>summary{margin-bottom:12px}
 .ktiles svg{position:absolute;right:12px;top:14px;width:16px;height:16px;opacity:.5}
 .sec a.small{float:right;font-weight:600;color:var(--mut);display:inline-flex;align-items:center;gap:2px}
 .sec a.small svg{width:14px;height:14px}
+
+/* 좌측 상단 카테고리 메뉴 (서랍) */
+.top-l{display:flex;align-items:center;gap:6px;margin-left:-6px}
+.menu-btn{cursor:pointer}
+.burger{display:inline-flex;flex-direction:column;gap:4px;width:20px}
+.burger i{display:block;height:2px;background:#fff;border-radius:2px}
+.drawer-bg{position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:60;opacity:0;pointer-events:none;transition:opacity .2s}
+.drawer{position:fixed;top:0;left:0;bottom:0;width:min(300px,84vw);background:#fff;z-index:61;transform:translateX(-102%);transition:transform .22s ease;overflow-y:auto;padding:env(safe-area-inset-top) 0 calc(16px + env(safe-area-inset-bottom));box-shadow:4px 0 24px rgba(0,0,0,.18);display:flex;flex-direction:column}
+.menu-t:checked ~ .drawer{transform:none}
+.menu-t:checked ~ .drawer-bg{opacity:1;pointer-events:auto}
+.drawer-hd{display:flex;justify-content:space-between;align-items:center;background:#0a0a0a;color:#fff;padding:16px 10px 16px 18px}
+.drawer-hd b{display:block;font-size:17px}.drawer-hd span{font-size:12px;opacity:.6}
+.drawer-hd .ibtn{color:#fff;font-size:18px;cursor:pointer}
+.drawer-sec{padding:8px 0;border-bottom:1px solid var(--line)}
+.drawer-sec h4{margin:8px 18px 4px;font-size:11.5px;letter-spacing:.06em;color:var(--red);font-weight:800}
+.drawer-sec a{display:block;padding:10px 18px;font-size:15px;font-weight:600;color:var(--ink);border-left:3px solid transparent}
+.drawer-sec a:hover{background:#f6f7f9}
+.drawer-sec a.on{background:var(--red-l);border-left-color:var(--red);color:var(--red-d)}
+.drawer-ft{margin-top:auto;padding:16px 18px 0}

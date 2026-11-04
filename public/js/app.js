@@ -61,3 +61,10 @@ if (items) {
 let deferred = null;
 window.addEventListener('beforeinstallprompt', e => { e.preventDefault(); deferred = e; const b = document.getElementById('installBtn'); if (b) { b.hidden = false; b.onclick = () => deferred.prompt(); } });
 if ('serviceWorker' in navigator) navigator.serviceWorker.register('/sw.js').catch(() => {});
+
+// 좌측 메뉴: Esc로 닫기, 메뉴 버튼 키보드로 열기
+(() => {
+  const t = document.getElementById('menu-t'); if (!t) return;
+  document.addEventListener('keydown', e => { if (e.key === 'Escape') t.checked = false; });
+  document.querySelector('.menu-btn')?.addEventListener('keydown', e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); t.checked = !t.checked; } });
+})();
