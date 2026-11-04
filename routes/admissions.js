@@ -1,3 +1,6 @@
+import fs from 'node:fs';
+import path from 'node:path';
+import { fileURLToPath } from 'node:url';
 import { get, post, notFound, bad, forbidden } from '../lib/router.js';
 import { one, all, run, tx, J } from '../lib/db.js';
 import { html, icon, pageTitle, empty, csrfField, chip } from '../lib/html.js';
@@ -208,6 +211,8 @@ get('/admin/universities', 'staff', ctx => {
   ctx.page('대학 관리', html`${pageTitle('대학 관리', '학생이 목표로 고를 대학과 대학별 실기 종목·환산표·배점을 관리합니다.')}
   <div class="note">${icon('info')}<span>대학 목록과 실기 종목은 예시로 넣어 두었어요. 내신 환산표·실기 배점표·합격선은 매년 모집요강을 보고 입력해 주세요.</span></div>
   <details class="card"><summary>대학 추가${icon('down')}</summary>${uniForm(ctx, {}, '/admin/universities')}</details>
+  ${bundled().length ? html`<div class="card"><h3>준비된 모집요강 자료</h3><p class="small muted mt0">Claude가 원장님이 모아 주신 모집요강을 정리해 앱에 넣어 둔 자료예요. 누르면 학교 시트에 채워져요(여러 번 눌러도 같은 학과는 덮어써요).</p>
+    ${bundled().map(f => html`<form method="post" action="/admin/universities/import-bundled" class="mb8" data-confirm="${f.replace(/\.json$/, '')} 자료를 불러올까요?">${csrfField(ctx)}<input type="hidden" name="file" value="${f}"><button class="btn full">${icon('upload')}${f.replace(/\.json$/, '')} 불러오기</button></form>`)}</div>` : ''}
   <details class="card"><summary>정리된 자료(JSON) 한 번에 넣기${icon('down')}</summary>
     <form method="post" action="/admin/universities/import-json">${csrfField(ctx)}<p class="small muted mt0">Claude가 모집요강을 정리해 준 자료를 붙여 넣는 칸이에요. 실기 종목과 배점표까지 함께 들어가요.</p>
     <textarea name="json" rows="5"></textarea><button class="btn full mt8">${icon('upload')}불러오기</button></form></details>
@@ -254,6 +259,18 @@ post('/admin/universities/import', 'staff', ctx => {
 // JSON으로 한 번에 넣기: 모집단위 정보 + 실기 종목 + 배점표 (정시 자료 정리용)
 post('/admin/universities/import-json', 'staff', ctx => {
   let list; try { list = JSON.parse(ctx.body.json || '[]'); } catch { bad('JSON 형식이 맞지 않아요.'); }
+  const [made, upd] = importPrograms(list);
+  ctx.redirect('/admin/universities', `${made}곳을 새로 만들고 ${upd}곳을 고쳤어요.`);
+});
+// 앱에 함께 들어 있는 정리 자료(scripts/data/*.json) 불러오기
+const DATA_DIR_BUNDLED = path.join(path.dirname(fileURLToPath(import.meta.url)), '..', 'scripts', 'data');
+const bundled = () => { try { return fs.readdirSync(DATA_DIR_BUNDLED).filter(f => f.endsWith('.json')).sort(); } catch { return []; } };
+post('/admin/universities/import-bundled', 'staff', ctx => {
+  const f = bundled().find(x => x === ctx.body.file) || bad('자료를 찾을 수 없어요.');
+  const [made, upd] = importPrograms(JSON.parse(fs.readFileSync(path.join(DATA_DIR_BUNDLED, f), 'utf8')));
+  ctx.redirect('/admin/universities', `${f.replace(/\.json$/, '')}: ${made}곳을 새로 만들고 ${upd}곳을 고쳤어요.`);
+});
+function importPrograms(list) {
   if (!Array.isArray(list)) list = [list];
   const norm = x => String(x || '').replace(/[\s()·\-]/g, '').replace(/m왕복/, 'm왕복');
   const exs = () => all('SELECT id,name,unit,higher_better FROM exercises');
@@ -284,8 +301,8 @@ post('/admin/universities/import-json', 'staff', ctx => {
     }
     if (set.length) run(`UPDATE universities SET ${set.join(',')} WHERE id=?`, ...vals, u.id);
   } });
-  ctx.redirect('/admin/universities', `${made}곳을 새로 만들고 ${upd}곳을 고쳤어요.`);
-});
+  return [made, upd];
+}
 const tableText = rows => (rows || []).map(r => r.join(' ')).join('\n');
 const parseTable = s => (s || '').split(/\n/).map(l => l.trim().split(/[\s,=:]+/).map(Number)).filter(r => r.length >= 2 && r.every(Number.isFinite)).map(r => [r[0], r[1]]);
 get('/admin/universities/:id', 'staff', ctx => {
