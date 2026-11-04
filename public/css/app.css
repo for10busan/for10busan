@@ -244,3 +244,8 @@ details.card[open]>summary{margin-bottom:12px}
 .drawer-sec a:hover{background:#f6f7f9}
 .drawer-sec a.on{background:var(--red-l);border-left-color:var(--red);color:var(--red-d)}
 .drawer-ft{margin-top:auto;padding:16px 18px 0}
+
+/* 지점 탭 (전체 / 구서 / 연산) */
+.btabs{display:flex;gap:6px;margin:18px 0 2px;background:#f1f2f4;border-radius:12px;padding:4px}
+.btabs a{flex:1;text-align:center;padding:9px 6px;border-radius:9px;font-weight:700;font-size:14px;color:var(--ink2);white-space:nowrap}
+.btabs a.on{background:#111;color:#fff}

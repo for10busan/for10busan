@@ -2,10 +2,10 @@ import { get } from '../lib/router.js';
 import { one, all } from '../lib/db.js';
 import { html, icon, stat, pageTitle, empty, pills } from '../lib/html.js';
 import { today, addDays, korDay, korDateTime, ATT_LABEL } from '../lib/util.js';
-import { sessionsOn, rate } from '../lib/services.js';
+import { sessionsOn, rate, branches } from '../lib/services.js';
 
-function attendanceToday(t) {
-  const ses = sessionsOn(t);
+function attendanceToday(t, bid = null) {
+  const ses = sessionsOn(t).filter(x => !bid || x.branch_id === bid);
   const ids = ses.filter(s => !s.canceled).map(s => s.id);
   const counts = { present: 0, late: 0, absent: 0, excused: 0 };
   let total = 0;
@@ -15,9 +15,9 @@ function attendanceToday(t) {
   return { ses, counts, unchecked: Math.max(0, total - checked) };
 }
 
-export function longAbsent(days = 30, streak = 3, minRate = 70) {
+export function longAbsent(days = 30, streak = 3, minRate = 70, bid = null) {
   const from = addDays(today(), -days); const t = today();
-  const students = all(`SELECT id,name FROM users WHERE role='student' AND status='approved'`);
+  const students = all(`SELECT id,name FROM users WHERE role='student' AND status='approved'${bid ? ' AND branch_id=?' : ''}`, ...(bid ? [bid] : []));
   const out = [];
   for (const s of students) {
     const rows = all(`SELECT a.status, ses.canceled FROM attendance a JOIN class_sessions ses ON ses.id=a.session_id
@@ -33,29 +33,35 @@ export function longAbsent(days = 30, streak = 3, minRate = 70) {
 
 get('/admin', 'staff', ctx => {
   const u = ctx.user; const t = today();
-  const { ses, counts, unchecked } = attendanceToday(t);
+  const brs = branches();
+  const bid = brs.some(b => b.id === Number(ctx.query.b)) ? Number(ctx.query.b) : null;
+  // 학생 지점 조건 (sid 컬럼 이름을 받아서)
+  const SB = col => bid ? ` AND ${col} IN (SELECT id FROM users WHERE branch_id=${bid})` : '';
+  const { ses, counts, unchecked } = attendanceToday(t, bid);
   const ym = t.slice(0, 7);
-  const m = one(`SELECT SUM(a.status='present') p, SUM(a.status='late') l, COUNT(*) n FROM attendance a JOIN class_sessions s ON s.id=a.session_id WHERE substr(s.date,1,7)=? AND s.canceled=0`, ym);
+  const m = one(`SELECT SUM(a.status='present') p, SUM(a.status='late') l, COUNT(*) n FROM attendance a JOIN class_sessions s ON s.id=a.session_id JOIN classes c ON c.id=s.class_id WHERE substr(s.date,1,7)=? AND s.canceled=0${bid ? ' AND c.branch_id=' + bid : ''}`, ym);
   const monthRate = rate(m.p || 0, m.l || 0, m.n || 0);
-  const la = longAbsent().length;
-  const staffN = one(`SELECT COUNT(*) c FROM users WHERE role IN ('owner','vice','coach') AND status='approved'`).c;
-  const sa = one(`SELECT SUM(status='present') p, SUM(status='absent') a FROM staff_attendance WHERE date=?`, t);
+  const la = longAbsent(30, 3, 70, bid).length;
+  const staffN = one(`SELECT COUNT(*) c FROM users WHERE role IN ('owner','vice','coach') AND status='approved'${bid ? ' AND (branch_id IS NULL OR branch_id=' + bid + ')' : ''}`).c;
+  const sa = one(`SELECT SUM(status='present') p, SUM(status='absent') a FROM staff_attendance WHERE date=?${bid ? ' AND user_id IN (SELECT id FROM users WHERE branch_id IS NULL OR branch_id=' + bid + ')' : ''}`, t);
   const from = addDays(t, -6);
-  const studentsN = one(`SELECT COUNT(*) c FROM users WHERE role='student' AND status='approved'`).c;
-  const active = one(`SELECT COUNT(DISTINCT sid) c FROM (SELECT student_id sid FROM logs WHERE date>=? UNION SELECT student_id FROM videos WHERE date(created_at,'+9 hours')>=?)`, from, from).c;
-  const logsN = one(`SELECT COUNT(*) c FROM logs WHERE date>=?`, from).c;
-  const vidN = one(`SELECT COUNT(*) c FROM videos WHERE date(created_at,'+9 hours')>=?`, from).c;
-  const comN = one(`SELECT COUNT(*) c FROM comments WHERE date(created_at,'+9 hours')>=?`, from).c;
-  const linked = one(`SELECT COUNT(DISTINCT student_id) c FROM parent_links WHERE status='approved'`).c;
-  const pend = one(`SELECT COUNT(*) c FROM users WHERE status='pending'`).c;
-  const pendL = one(`SELECT COUNT(*) c FROM parent_links WHERE status='pending'`).c;
-  const toReview = one(`SELECT COUNT(*) c FROM videos WHERE status='done' AND reviewed_at IS NULL`).c;
+  const studentsN = one(`SELECT COUNT(*) c FROM users WHERE role='student' AND status='approved'${bid ? ' AND branch_id=' + bid : ''}`).c;
+  const active = one(`SELECT COUNT(DISTINCT sid) c FROM (SELECT student_id sid FROM logs WHERE date>=?${SB('student_id')} UNION SELECT student_id FROM videos WHERE date(created_at,'+9 hours')>=?${SB('student_id')})`, from, from).c;
+  const logsN = one(`SELECT COUNT(*) c FROM logs WHERE date>=?${SB('student_id')}`, from).c;
+  const vidN = one(`SELECT COUNT(*) c FROM videos WHERE date(created_at,'+9 hours')>=?${SB('student_id')}`, from).c;
+  const comN = one(`SELECT COUNT(*) c FROM comments WHERE date(created_at,'+9 hours')>=?${bid ? ` AND ((target_type='log' AND target_id IN (SELECT id FROM logs WHERE 1=1${SB('student_id')})) OR (target_type='video' AND target_id IN (SELECT id FROM videos WHERE 1=1${SB('student_id')})))` : ''}`, from).c;
+  const linked = one(`SELECT COUNT(DISTINCT student_id) c FROM parent_links WHERE status='approved'${SB('student_id')}`).c;
+  const pend = one(`SELECT COUNT(*) c FROM users WHERE status='pending'${bid ? ' AND branch_id=' + bid : ''}`).c;
+  const pendL = one(`SELECT COUNT(*) c FROM parent_links WHERE status='pending'${SB('student_id')}`).c;
+  const toReview = one(`SELECT COUNT(*) c FROM videos WHERE status='done' AND reviewed_at IS NULL${SB('student_id')}`).c;
   const title = { owner: '원장님', vice: '부원장님', coach: '선생님' }[u.role];
 
-  const vNo = one(`SELECT COUNT(*) c FROM videos WHERE date(created_at,'+9 hours')>=? AND reviewed_at IS NULL`, from).c;
-  const vYes = one(`SELECT COUNT(*) c FROM videos WHERE date(created_at,'+9 hours')>=? AND reviewed_at IS NOT NULL`, from).c;
-  const lNo = one(`SELECT COUNT(*) c FROM logs WHERE date>=? AND reviewed_at IS NULL`, from).c;
-  const lYes = one(`SELECT COUNT(*) c FROM logs WHERE date>=? AND reviewed_at IS NOT NULL`, from).c;
+  const vNo = one(`SELECT COUNT(*) c FROM videos WHERE date(created_at,'+9 hours')>=? AND reviewed_at IS NULL${SB('student_id')}`, from).c;
+  const vYes = one(`SELECT COUNT(*) c FROM videos WHERE date(created_at,'+9 hours')>=? AND reviewed_at IS NOT NULL${SB('student_id')}`, from).c;
+  const lNo = one(`SELECT COUNT(*) c FROM logs WHERE date>=? AND reviewed_at IS NULL${SB('student_id')}`, from).c;
+  const lYes = one(`SELECT COUNT(*) c FROM logs WHERE date>=? AND reviewed_at IS NOT NULL${SB('student_id')}`, from).c;
+  const bq = bid ? `&b=${bid}` : '';
+  const bname = bid ? brs.find(b => b.id === bid).name : '전체';
   const [yy, mm, dd] = t.split('-');
   const wd = '일월화수목금토'[new Date(t + 'T00:00:00Z').getUTCDay()];
   const tiles = [['UNIVERSITY', '대학검색', '/admin/student-predict'], ['TODAY CLASS', '오늘 수업', '/coach'], ['STUDENTS', '학생', '/students'],
@@ -65,26 +71,27 @@ get('/admin', 'staff', ctx => {
   <div class="khero"><div><small>FOR10 STAFF</small><b>${u.name} ${title}</b></div><div class="kdate"><b>${Number(mm)}.${Number(dd)}</b><span>${yy} · ${wd}요일</span></div></div>
   ${pend || pendL ? html`<div class="note amber">${icon('usercheck')}<span>승인 대기 — <a href="/admin/approvals"><u>가입 ${pend}건</u></a> · <a href="/admin/links"><u>학부모 연결 ${pendL}건</u></a></span></div>` : ''}
   <div class="ktiles">${tiles.map(([en, ko, h], i) => html`<a href="${h}"><span class="kn">${String(i + 1).padStart(2, '0')}</span><small>${en}</small><b>${ko}</b>${icon('right')}</a>`)}</div>
-  <h2 class="sec">오늘 출결 <a class="small" href="/admin/stats">출결 통계 · CSV ${icon('right')}</a></h2>
+  ${brs.length > 1 ? html`<div class="btabs" role="tablist" aria-label="지점">${[['전체', null], ...brs.map(x => [x.name, x.id])].map(([n, id]) => html`<a role="tab" aria-selected="${id === bid}" class="${id === bid ? 'on' : ''}" href="${id ? `/admin?b=${id}` : '/admin'}">${n}</a>`)}</div>` : ''}
+  <h2 class="sec">오늘 출결 ${brs.length > 1 ? html`<small>${bname}</small>` : ''} <a class="small" href="/admin/stats">출결 통계 · CSV ${icon('right')}</a></h2>
   <div class="grid">
-    ${stat('출석·지각', `${counts.present + counts.late}명`, `지각 ${counts.late}`, '/admin/today?s=present')}
-    ${stat('결석', `${counts.absent}명`, `공결 ${counts.excused} · 미체크 ${unchecked}`, '/admin/today?s=absent')}
+    ${stat('출석·지각', `${counts.present + counts.late}명`, `지각 ${counts.late}`, `/admin/today?s=present${bq}`)}
+    ${stat('결석', `${counts.absent}명`, `공결 ${counts.excused} · 미체크 ${unchecked}`, `/admin/today?s=absent${bq}`)}
     ${stat('이번 달 출석률', monthRate == null ? '-' : `${monthRate}%`, '', '/admin/stats')}
     ${stat('장기 결석자', `${la}명`, '최근 30일', '/admin/stats#long-absent', la ? 'red' : '')}
   </div>
   <h2 class="sec">영상 · 일지 확인 <small>최근 7일</small></h2>
   <div class="grid">
-    ${stat('영상 미확인', `${vNo}개`, '', '/admin/activity?t=videos&c=no', vNo ? 'warn' : '')}
-    ${stat('영상 확인', `${vYes}개`, '', '/admin/activity?t=videos&c=yes')}
-    ${stat('일지 미확인', `${lNo}개`, '', '/admin/activity?t=logs&c=no', lNo ? 'warn' : '')}
-    ${stat('일지 확인', `${lYes}개`, '', '/admin/activity?t=logs&c=yes')}
+    ${stat('영상 미확인', `${vNo}개`, '', `/admin/activity?t=videos&c=no${bq}`, vNo ? 'warn' : '')}
+    ${stat('영상 확인', `${vYes}개`, '', `/admin/activity?t=videos&c=yes${bq}`)}
+    ${stat('일지 미확인', `${lNo}개`, '', `/admin/activity?t=logs&c=no${bq}`, lNo ? 'warn' : '')}
+    ${stat('일지 확인', `${lYes}개`, '', `/admin/activity?t=logs&c=yes${bq}`)}
   </div>
   <h2 class="sec">최근 7일 이용</h2>
   <div class="grid">
-    ${stat('활동한 학생', `${active}/${studentsN}명`, '일지·영상 기준', '/admin/activity?t=students')}
-    ${stat('일지', `${logsN}개`, '', '/admin/activity?t=logs')}
-    ${stat('영상 · 코멘트', `${vidN} · ${comN}`, '', '/admin/activity?t=videos')}
-    ${stat('학부모 연결 학생', `${linked}/${studentsN}명`, '', '/admin/activity?t=linked')}
+    ${stat('활동한 학생', `${active}/${studentsN}명`, '일지·영상 기준', `/admin/activity?t=students${bq}`)}
+    ${stat('일지', `${logsN}개`, '', `/admin/activity?t=logs${bq}`)}
+    ${stat('영상 · 코멘트', `${vidN} · ${comN}`, '', `/admin/activity?t=videos${bq}`)}
+    ${stat('학부모 연결 학생', `${linked}/${studentsN}명`, '', `/admin/activity?t=linked${bq}`)}
   </div>
   <div class="grid c3">
     ${stat('직원 출근', `${sa.p || 0}/${staffN}명`, '눌러서 내 출근 남기기', '/admin/staff-attendance')}
@@ -101,11 +108,11 @@ get('/admin', 'staff', ctx => {
 });
 
 get('/admin/today', 'staff', ctx => {
-  const t = today(); const s = ctx.query.s === 'absent' ? 'absent' : 'present';
+  const t = today(); const s = ctx.query.s === 'absent' ? 'absent' : 'present'; const bid = Number(ctx.query.b) || null;
   const rows = all(`SELECT a.status, a.memo, u.id, u.name, c.name class_name FROM attendance a JOIN class_sessions ses ON ses.id=a.session_id
-    JOIN classes c ON c.id=ses.class_id JOIN users u ON u.id=a.student_id WHERE ses.date=? AND a.status IN (${s === 'present' ? "'present','late'" : "'absent','excused'"}) ORDER BY u.name`, t);
+    JOIN classes c ON c.id=ses.class_id JOIN users u ON u.id=a.student_id WHERE ses.date=?${bid ? ' AND c.branch_id=' + bid : ''} AND a.status IN (${s === 'present' ? "'present','late'" : "'absent','excused'"}) ORDER BY u.name`, t);
   ctx.page('오늘 출결', html`${pageTitle(s === 'present' ? '오늘 출석·지각' : '오늘 결석·공결', korDay(t), ['홈', '/admin'])}
-  ${pills([['출석·지각', '/admin/today?s=present', 'present'], ['결석·공결', '/admin/today?s=absent', 'absent']], s)}
+  ${pills([['출석·지각', `/admin/today?s=present${bid ? '&b=' + bid : ''}`, 'present'], ['결석·공결', `/admin/today?s=absent${bid ? '&b=' + bid : ''}`, 'absent']], s)}
   ${rows.length ? html`<div class="list">${rows.map(r => html`<a href="/students/${r.id}"><div class="row-m"><b>${r.name}</b><span>${r.class_name}${r.memo ? ' · ' + r.memo : ''}</span></div>
     <div class="row-r"><span class="chip ${{ present: 'green', late: 'amber', absent: 'red', excused: 'blue' }[r.status]}">${ATT_LABEL[r.status]}</span>${icon('right')}</div></a>`)}</div>` : empty('해당하는 학생이 없어요')}`);
 });
@@ -114,14 +121,16 @@ get('/admin/activity', 'staff', ctx => {
   const t = today(); const from = addDays(t, -6);
   const tab = ['students', 'logs', 'videos', 'comments', 'linked'].includes(ctx.query.t) ? ctx.query.t : 'students';
   const cf = ['no', 'yes'].includes(ctx.query.c) ? ctx.query.c : '';
+  const bid = Number(ctx.query.b) || null; const SB = col => bid ? ` AND ${col} IN (SELECT id FROM users WHERE branch_id=${bid})` : '';
   const cw = cf === 'no' ? ' AND reviewed_at IS NULL' : cf === 'yes' ? ' AND reviewed_at IS NOT NULL' : '';
   const stu = all(`SELECT u.id,u.name,(SELECT COUNT(*) FROM logs l WHERE l.student_id=u.id AND l.date>=?) nl,
-    (SELECT COUNT(*) FROM videos v WHERE v.student_id=u.id AND date(v.created_at,'+9 hours')>=?) nv FROM users u WHERE role='student' AND status='approved' ORDER BY name`, from, from).filter(r => r.nl || r.nv);
-  const logs = all(`SELECT l.*, u.name FROM logs l JOIN users u ON u.id=l.student_id WHERE l.date>=?${cw.replace(/reviewed_at/g, 'l.reviewed_at')} ORDER BY l.date DESC, l.id DESC`, from);
-  const vids = all(`SELECT v.*, u.name, e.name ex FROM videos v JOIN users u ON u.id=v.student_id JOIN exercises e ON e.id=v.exercise_id WHERE date(v.created_at,'+9 hours')>=?${cw.replace(/reviewed_at/g, 'v.reviewed_at')} ORDER BY v.id DESC`, from);
+    (SELECT COUNT(*) FROM videos v WHERE v.student_id=u.id AND date(v.created_at,'+9 hours')>=?) nv FROM users u WHERE role='student' AND status='approved'${bid ? ' AND branch_id=' + bid : ''} ORDER BY name`, from, from).filter(r => r.nl || r.nv);
+  const logs = all(`SELECT l.*, u.name FROM logs l JOIN users u ON u.id=l.student_id WHERE l.date>=?${cw.replace(/reviewed_at/g, 'l.reviewed_at')}${SB('l.student_id')} ORDER BY l.date DESC, l.id DESC`, from);
+  const vids = all(`SELECT v.*, u.name, e.name ex FROM videos v JOIN users u ON u.id=v.student_id JOIN exercises e ON e.id=v.exercise_id WHERE date(v.created_at,'+9 hours')>=?${cw.replace(/reviewed_at/g, 'v.reviewed_at')}${SB('v.student_id')} ORDER BY v.id DESC`, from);
   const coms = all(`SELECT c.*, u.name author FROM comments c LEFT JOIN users u ON u.id=c.author_id WHERE date(c.created_at,'+9 hours')>=? ORDER BY c.id DESC`, from);
-  const linked = all(`SELECT DISTINCT u.id, u.name, p.name parent FROM parent_links pl JOIN users u ON u.id=pl.student_id JOIN users p ON p.id=pl.parent_id WHERE pl.status='approved' ORDER BY u.name`);
-  const tabs = [[`활동한 학생 ${stu.length}`, '?t=students', 'students'], [`일지 ${logs.length}`, '?t=logs', 'logs'], [`영상 ${vids.length}`, '?t=videos', 'videos'], [`코멘트 ${coms.length}`, '?t=comments', 'comments'], [`학부모 연결 ${linked.length}`, '?t=linked', 'linked']];
+  const linked = all(`SELECT DISTINCT u.id, u.name, p.name parent FROM parent_links pl JOIN users u ON u.id=pl.student_id JOIN users p ON p.id=pl.parent_id WHERE pl.status='approved'${SB('pl.student_id')} ORDER BY u.name`);
+  const bq = bid ? `&b=${bid}` : '';
+  const tabs = [[`활동한 학생 ${stu.length}`, `?t=students${bq}`, 'students'], [`일지 ${logs.length}`, `?t=logs${bq}`, 'logs'], [`영상 ${vids.length}`, `?t=videos${bq}`, 'videos'], [`코멘트 ${coms.length}`, `?t=comments${bq}`, 'comments'], [`학부모 연결 ${linked.length}`, `?t=linked${bq}`, 'linked']];
   let list;
   if (tab === 'students') list = stu.map(r => html`<a href="/students/${r.id}"><div class="row-m"><b>${r.name}</b></div><div class="row-r">일지 ${r.nl} · 영상 ${r.nv}${icon('right')}</div></a>`);
   if (tab === 'logs') list = logs.map(r => html`<a href="/logs/${r.id}"><div class="row-m"><b>${r.name}</b><span>${korDay(r.date)}</span></div><div class="row-r">${r.reviewed_at ? html`<span class="chip green">확인</span>` : html`<span class="chip amber">미확인</span>`}${icon('right')}</div></a>`);
@@ -130,7 +139,7 @@ get('/admin/activity', 'staff', ctx => {
   if (tab === 'linked') list = linked.map(r => html`<a href="/students/${r.id}"><div class="row-m"><b>${r.name}</b><span>학부모 ${r.parent}</span></div><div class="row-r">${icon('right')}</div></a>`);
   ctx.page('이용 현황', html`${pageTitle('이용 현황 · 최근 7일', '누가 무엇을 했는지 확인해요.', ['홈', '/admin'])}
   ${pills(tabs, tab)}
-  ${['logs', 'videos'].includes(tab) ? pills([['전체', `?t=${tab}`, ''], ['미확인', `?t=${tab}&c=no`, 'no'], ['확인', `?t=${tab}&c=yes`, 'yes']], cf) : ''}
+  ${['logs', 'videos'].includes(tab) ? pills([['전체', `?t=${tab}${bq}`, ''], ['미확인', `?t=${tab}&c=no${bq}`, 'no'], ['확인', `?t=${tab}&c=yes${bq}`, 'yes']], cf) : ''}
   ${list.length ? html`<div class="list">${list}</div>` : empty('기록이 없어요')}`);
 });
 
