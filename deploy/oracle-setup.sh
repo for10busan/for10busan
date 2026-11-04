@@ -1,7 +1,7 @@
 #!/bin/bash
 # =====================================================================
-#  포텐체대입시 부산교육원 앱 — 오라클 클라우드 무료 서버 자동 설치
-#  오라클에서 서버(인스턴스)를 만들 때 "cloud-init 스크립트" 칸에 붙여 넣으면
+#  포텐체대입시 부산교육원 앱 — 무료 서버 자동 설치 (오라클 클라우드 · 구글 클라우드)
+#  오라클: 인스턴스 만들 때 "cloud-init 스크립트" 칸 / 구글: VM 만들 때 "시작 스크립트" 칸에 붙여 넣으면
 #  서버가 처음 켜질 때 아래가 모두 자동으로 진행돼요 (약 5~10분):
 #   1) Node.js 설치  2) 앱 내려받기  3) 자동 실행 등록
 #   4) https 인증서(Caddy)  5) 매일 백업  6) 주소(DuckDNS) 자동 갱신
@@ -31,7 +31,7 @@ fi
 apt-get update -y
 apt-get install -y git sqlite3 curl ca-certificates debian-keyring debian-archive-keyring apt-transport-https iptables-persistent
 for P in 80 443; do
-  iptables -C INPUT -p tcp --dport $P -j ACCEPT 2>/dev/null || iptables -I INPUT 6 -m state --state NEW -p tcp --dport $P -j ACCEPT
+  iptables -C INPUT -p tcp --dport $P -j ACCEPT 2>/dev/null || iptables -I INPUT 1 -p tcp --dport $P -j ACCEPT
 done
 netfilter-persistent save || true
 
