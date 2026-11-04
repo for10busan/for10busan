@@ -120,4 +120,16 @@ git -C $APP_DIR pull --ff-only && systemctl restart for10 && echo "업데이트 
 EOF
 chmod +x /usr/local/bin/for10-update
 
+# 9) 자동 업데이트: 10분마다 GitHub를 확인해서 새 버전이 있으면 받아서 재시작
+cat > /usr/local/bin/for10-autoupdate <<'AUTO'
+#!/bin/bash
+cd /opt/for10 || exit 0
+git fetch -q origin || exit 0
+if [ "$(git rev-parse HEAD)" != "$(git rev-parse '@{u}')" ]; then
+  git pull -q --ff-only && systemctl restart for10 && echo "$(date) 자동 업데이트 $(git rev-parse --short HEAD)" >> /var/log/for10-update.log
+fi
+AUTO
+chmod +x /usr/local/bin/for10-autoupdate
+echo '*/10 * * * * root /usr/local/bin/for10-autoupdate' > /etc/cron.d/for10-autoupdate
+
 echo "=== 설치 완료: https://$DOMAIN  ($(date)) ==="
