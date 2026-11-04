@@ -262,8 +262,8 @@ post('/admin/universities/import-json', 'staff', ctx => {
   const [made, upd] = importPrograms(list);
   ctx.redirect('/admin/universities', `${made}곳을 새로 만들고 ${upd}곳을 고쳤어요.`);
 });
-// 앱에 함께 들어 있는 정리 자료(scripts/data/*.json) 불러오기
-const DATA_DIR_BUNDLED = path.join(path.dirname(fileURLToPath(import.meta.url)), '..', 'scripts', 'data');
+// 앱에 함께 들어 있는 정리 자료(scripts/bundled/*.json) 불러오기
+const DATA_DIR_BUNDLED = path.join(path.dirname(fileURLToPath(import.meta.url)), '..', 'scripts', 'bundled');
 const bundled = () => { try { return fs.readdirSync(DATA_DIR_BUNDLED).filter(f => f.endsWith('.json')).sort(); } catch { return []; } };
 post('/admin/universities/import-bundled', 'staff', ctx => {
   const f = bundled().find(x => x === ctx.body.file) || bad('자료를 찾을 수 없어요.');
