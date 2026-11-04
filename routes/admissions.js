@@ -208,6 +208,9 @@ get('/admin/universities', 'staff', ctx => {
   ctx.page('대학 관리', html`${pageTitle('대학 관리', '학생이 목표로 고를 대학과 대학별 실기 종목·환산표·배점을 관리합니다.')}
   <div class="note">${icon('info')}<span>대학 목록과 실기 종목은 예시로 넣어 두었어요. 내신 환산표·실기 배점표·합격선은 매년 모집요강을 보고 입력해 주세요.</span></div>
   <details class="card"><summary>대학 추가${icon('down')}</summary>${uniForm(ctx, {}, '/admin/universities')}</details>
+  <details class="card"><summary>정리된 자료(JSON) 한 번에 넣기${icon('down')}</summary>
+    <form method="post" action="/admin/universities/import-json">${csrfField(ctx)}<p class="small muted mt0">Claude가 모집요강을 정리해 준 자료를 붙여 넣는 칸이에요. 실기 종목과 배점표까지 함께 들어가요.</p>
+    <textarea name="json" rows="5"></textarea><button class="btn full mt8">${icon('upload')}불러오기</button></form></details>
   <details class="card"><summary>엑셀에서 붙여 넣어 한 번에 채우기${icon('down')}</summary>
     <form method="post" action="/admin/universities/import">${csrfField(ctx)}
     <p class="small muted mt0">엑셀 첫 줄에 아래 제목 중 필요한 것만 넣고, 표를 통째로 복사해서 붙여 넣으세요. <b>대학</b>과 <b>학과</b>가 같은 줄은 내용을 고치고, 없으면 새로 만들어요.</p>
@@ -245,6 +248,41 @@ post('/admin/universities/import', 'staff', ctx => {
     if (o.exercises && o.exercises !== '-') { const ids = o.exercises.split(/[,·/]/).map(x => findEx(x.trim())).filter(Boolean); if (ids.length) { set.push('exercises=?'); vals.push(JSON.stringify(ids)); } }
     if (set.length) run(`UPDATE universities SET ${set.join(',')} WHERE id=?`, ...vals, u.id);
     if (num(o.cutoff) != null) run('INSERT INTO cutoffs(university_id,year,cutoff,final) VALUES(?,?,?,?) ON CONFLICT(university_id,year) DO UPDATE SET cutoff=excluded.cutoff, final=excluded.final', u.id, Number(o.year) || Number(today().slice(0, 4)) + 1, num(o.cutoff), num(o.final));
+  } });
+  ctx.redirect('/admin/universities', `${made}곳을 새로 만들고 ${upd}곳을 고쳤어요.`);
+});
+// JSON으로 한 번에 넣기: 모집단위 정보 + 실기 종목 + 배점표 (정시 자료 정리용)
+post('/admin/universities/import-json', 'staff', ctx => {
+  let list; try { list = JSON.parse(ctx.body.json || '[]'); } catch { bad('JSON 형식이 맞지 않아요.'); }
+  if (!Array.isArray(list)) list = [list];
+  const norm = x => String(x || '').replace(/[\s()·\-]/g, '').replace(/m왕복/, 'm왕복');
+  const exs = () => all('SELECT id,name,unit,higher_better FROM exercises');
+  const findOrMakeEx = e => {
+    const k = norm(e.name); const hit = exs().find(x => norm(x.name) === k);
+    if (hit) return hit.id;
+    return Number(run('INSERT INTO exercises(name,unit,higher_better,kind,is_sample,sort) VALUES(?,?,?,\'record\',0,99)', e.name, e.unit || '', e.hb === 0 ? 0 : 1).lastInsertRowid);
+  };
+  const TXT = ['track_type', 'region', 'city', 'founding', 'stage', 'suneung_min', 'practical_date', 'interview_date', 'year_weights', 'subjects', 'subject_weights', 'subject_scope', 'changes', 'memo'];
+  const NUM = ['quota', 'school_ratio', 'practical_ratio', 'suneung_ratio', 'school_max', 'practical_max', 'suneung_max', 'step_points'];
+  let made = 0, upd = 0;
+  tx(() => { for (const o of list) {
+    if (!o || !o.name) continue;
+    const adm = o.admission === '정시' ? '정시' : '수시';
+    // 학교 통합 등으로 이름이 바뀐 경우: 예전 이름의 같은 학과(모든 전형)를 새 이름으로 옮김
+    if (Array.isArray(o.rename_from) && o.rename_from[0]) run('UPDATE universities SET name=?, dept=? WHERE name=? AND IFNULL(dept,\'\')=?', o.name, o.dept || null, o.rename_from[0], o.rename_from[1] || '');
+    let u = one('SELECT id FROM universities WHERE name=? AND IFNULL(dept,\'\')=? AND admission=? AND IFNULL(track,\'\')=?', o.name, o.dept || '', adm, o.track || '');
+    if (!u) { u = { id: Number(run('INSERT INTO universities(name,dept,admission,track,is_sample) VALUES(?,?,?,?,0)', o.name, o.dept || null, adm, o.track || null).lastInsertRowid) }; made++; } else upd++;
+    const set = [], vals = [];
+    for (const k of TXT) if (o[k] != null && o[k] !== '') { set.push(k + '=?'); vals.push(String(o[k])); }
+    for (const k of NUM) if (o[k] != null && o[k] !== '' && Number.isFinite(Number(o[k]))) { set.push(k + '=?'); vals.push(Number(o[k])); }
+    if (o.teacher_cert != null) { set.push('teacher_cert=?'); vals.push(o.teacher_cert ? 1 : 0); }
+    if (Array.isArray(o.exercises) && o.exercises.length) {
+      const ids = [], sc = {}, notes = {};
+      for (const e of o.exercises) { const id = findOrMakeEx(e); ids.push(id); if (e.M || e.F) sc[id] = { M: e.M || [], F: e.F || e.M || [] }; if (e.notes) notes[id] = [].concat(e.notes); }
+      set.push('exercises=?', 'scoring=?'); vals.push(JSON.stringify(ids), JSON.stringify(sc));
+      if (Object.keys(notes).length) { set.push('field_notes=?'); vals.push(JSON.stringify(notes)); }
+    }
+    if (set.length) run(`UPDATE universities SET ${set.join(',')} WHERE id=?`, ...vals, u.id);
   } });
   ctx.redirect('/admin/universities', `${made}곳을 새로 만들고 ${upd}곳을 고쳤어요.`);
 });
