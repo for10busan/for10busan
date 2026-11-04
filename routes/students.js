@@ -176,6 +176,7 @@ post('/comments', 'staff', ctx => {
   if (!t) notFound();
   run('INSERT INTO comments(target_type,target_id,author_id,body) VALUES(?,?,?,?)', type, id, ctx.user.id, body.trim());
   if (type === 'video') run(`UPDATE videos SET reviewed_by=?, reviewed_at=COALESCE(reviewed_at, datetime('now')) WHERE id=?`, ctx.user.id, id);
+  if (type === 'log' && isStaff(ctx.user)) run(`UPDATE logs SET reviewed_by=?, reviewed_at=COALESCE(reviewed_at, datetime('now')) WHERE id=?`, ctx.user.id, id);
   const link = `/${type === 'log' ? 'logs' : 'videos'}/${id}`;
   notify([t.student_id, ...parentIdsOf(t.student_id)], 'comment', `${ctx.user.name} 선생님이 코멘트를 남겼어요`, body.trim().slice(0, 60), link);
   ctx.redirect(link, '코멘트를 등록했어요.');
@@ -186,6 +187,12 @@ post('/comments/:id/delete', 'staff', ctx => {
   run('DELETE FROM comments WHERE id=?', c.id);
   ctx.back('지웠어요.');
 });
+post('/logs/:id/review', 'staff', ctx => {
+  const l = one('SELECT * FROM logs WHERE id=?', ctx.params.id) || notFound();
+  if (ctx.body.v === '0') run('UPDATE logs SET reviewed_by=NULL, reviewed_at=NULL WHERE id=?', l.id);
+  else run(`UPDATE logs SET reviewed_by=?, reviewed_at=datetime('now') WHERE id=?`, ctx.user.id, l.id);
+  ctx.back(ctx.body.v === '0' ? '확인을 취소했어요.' : '일지를 확인했어요.');
+});
 get('/logs/:id', 'user', ctx => {
   const l = one('SELECT l.*, u.name FROM logs l JOIN users u ON u.id=l.student_id WHERE l.id=?', ctx.params.id) || notFound();
   if (!canViewStudent(ctx.user, l.student_id)) forbidden();
@@ -195,6 +202,8 @@ get('/logs/:id', 'user', ctx => {
   <div class="card"><h3>몸 상태</h3><dl class="kv"><dt>컨디션</dt><dd>${l.condition ? `${l.condition} · ${CONDITION[l.condition]}` : '—'}</dd><dt>수면</dt><dd>${l.sleep_hours != null ? `${fmtNum(l.sleep_hours, 1)}시간` : '—'}</dd><dt>통증</dt><dd>${l.pain || '없음'}</dd></dl></div>
   <div class="card"><h3>훈련 기록</h3>${items.length ? html`<div class="list mb0">${items.map(i => html`<div><div class="row-m"><b>${i.name || '기타 훈련'}</b><span class="wrap2">${i.memo || ''}</span></div>${i.record != null ? html`<b>${fmtNum(i.record)}${i.unit}</b>` : ''}</div>`)}</div>` : html`<p class="small muted m0">기록한 종목이 없어요.</p>`}
     ${l.memo ? html`<p class="mt12 mb0" style="white-space:pre-wrap">${l.memo}</p>` : ''}</div>
+  ${isStaff(ctx.user) ? html`<form method="post" action="/logs/${l.id}/review" class="mb8">${csrfField(ctx)}<input type="hidden" name="v" value="${l.reviewed_at ? 0 : 1}">
+    <button class="btn full ${l.reviewed_at ? 'gray' : ''}">${icon('check')}${l.reviewed_at ? '확인 취소' : '일지 확인'}</button></form>` : l.reviewed_at ? html`<div class="note blue">${icon('check')}<span>선생님이 이 일지를 확인했어요.</span></div>` : ''}
   ${commentsBlock(ctx, 'log', l.id, l.student_id)}
   ${self ? html`<a class="btn ghost full" href="/logs/new?date=${l.date}">${icon('pen')}이 일지 고치기</a>` : ''}`, { active: self ? '/me/logs' : undefined });
 });

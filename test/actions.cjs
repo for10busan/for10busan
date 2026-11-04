@@ -20,7 +20,7 @@ const check = (name, cond, extra = '') => (cond ? ok : bad).push(name + (extra ?
   const n = await session();
   await n.goto(BASE + '/signup');
   const email = `t${Date.now()}@test.kr`; const NM = '학생' + String(Date.now()).slice(-5); const PN = '부모' + String(Date.now()).slice(-5);
-  await n.fill('[name=name]', NM); await n.fill('[name=email]', email); await n.fill('[name=password]', 'abcd1234'); await n.fill('[name=phone]', '010-1111-2222'); await n.fill('[name=school]', '부산고');
+  await n.fill('[name=name]', NM); await n.fill('[name=username]', 'u' + String(Date.now()).slice(-8)); await n.fill('[name=email]', email); await n.fill('[name=password]', 'abcd1234'); await n.fill('[name=phone]', '010-1111-2222'); await n.fill('[name=school]', '부산고');
   await n.check('[name=agree_terms]'); await n.check('[name=agree_privacy]');
   await submit(n, 'form[action="/signup"] button');
   check('가입 → 승인 대기 화면', n.url().endsWith('/pending'));
@@ -89,7 +89,7 @@ const check = (name, cond, extra = '') => (cond ? ok : bad).push(name + (extra ?
   // 9) 학부모 가입 + 연결 요청 → 승인 → 자녀 출결 보기
   const pa = await session();
   await pa.goto(BASE + '/signup?role=parent');
-  await pa.fill('[name=name]', PN); await pa.fill('[name=email]', `p${Date.now()}@test.kr`); await pa.fill('[name=password]', 'abcd1234'); await pa.fill('[name=phone]', '010-3333-4444');
+  await pa.fill('[name=name]', PN); await pa.fill('[name=username]', 'p' + String(Date.now()).slice(-8)); await pa.fill('[name=email]', `p${Date.now()}@test.kr`); await pa.fill('[name=password]', 'abcd1234'); await pa.fill('[name=phone]', '010-3333-4444');
   await pa.fill('[name=child_email]', email); await pa.check('[name=agree_terms]'); await pa.check('[name=agree_privacy]');
   await submit(pa, 'form[action="/signup"] button');
   await o.goto(BASE + '/admin/approvals'); await Promise.all([o.waitForLoadState('load'), o.locator('.card', { hasText: PN }).locator('button[value=approve]').click()]);

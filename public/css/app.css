@@ -209,3 +209,19 @@ details.card[open]>summary{margin-bottom:12px}
 .big3 small{display:block;color:var(--mut);font-size:12px} .big3 b{font-size:18px}
 .verdict{border-radius:12px;padding:12px;text-align:center;font-weight:800;font-size:16px}
 .verdict.safe{background:var(--green-l);color:#137a39} .verdict.ok{background:var(--blue-l);color:#1d4ed8} .verdict.risk{background:var(--red-l);color:var(--red-d)}
+
+/* K:ON 스타일 직원 홈 */
+.khero{display:flex;justify-content:space-between;align-items:flex-end;background:#111;color:#fff;border-radius:16px;padding:20px 18px;margin:4px 0 14px}
+.khero small{display:block;font-size:11px;letter-spacing:.14em;color:var(--red);font-weight:700;margin-bottom:6px}
+.khero b{font-size:20px}
+.kdate{text-align:right}.kdate b{display:block;font-size:30px;line-height:1;letter-spacing:-.02em}.kdate span{font-size:12px;opacity:.6}
+.ktiles{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px;margin-bottom:6px}
+@media(min-width:720px){.ktiles{grid-template-columns:repeat(3,minmax(0,1fr))}}
+.ktiles a{position:relative;display:block;background:#1a1a1a;color:#fff;border-radius:14px;padding:14px 14px 16px;min-height:96px;text-decoration:none}
+.ktiles a:hover{background:#000}
+.ktiles .kn{font-size:12px;font-weight:800;color:var(--red)}
+.ktiles small{display:block;font-size:10px;letter-spacing:.12em;opacity:.55;margin-top:14px;font-weight:700}
+.ktiles b{display:block;font-size:16px;margin-top:2px}
+.ktiles svg{position:absolute;right:12px;top:14px;width:16px;height:16px;opacity:.5}
+.sec a.small{float:right;font-weight:600;color:var(--mut);display:inline-flex;align-items:center;gap:2px}
+.sec a.small svg{width:14px;height:14px}

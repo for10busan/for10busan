@@ -16,7 +16,7 @@ get('/login', 'public', ctx => {
   <h1>로그인</h1><p class="sub">${APP_NAME}에서 승인된 계정으로 로그인하세요.</p>
   <form method="post" action="/login" class="formcard">
     <input type="hidden" name="next" value="${ctx.query.next || ''}">
-    <label class="field"><span>이메일</span><input type="email" name="email" autocomplete="username" required autofocus></label>
+    <label class="field"><span>아이디</span><input type="text" name="email" autocomplete="username" autocapitalize="none" required autofocus><small>예전에 이메일로 가입했다면 이메일을 입력하세요.</small></label>
     <label class="field"><span>비밀번호</span><input type="password" name="password" autocomplete="current-password" required></label>
     <button class="btn full">로그인</button>
   </form>
@@ -26,8 +26,9 @@ get('/login', 'public', ctx => {
 
 post('/login', 'public', ctx => {
   const { email = '', password = '', next = '' } = ctx.body;
-  const u = one('SELECT * FROM users WHERE email=?', email.trim());
-  if (!u || !verifyPassword(password, u.password_hash)) return ctx.redirect('/login', { msg: '이메일 또는 비밀번호가 맞지 않아요.', type: 'err' });
+  const id = email.trim();
+  const u = one('SELECT * FROM users WHERE username=? COLLATE NOCASE', id) || one('SELECT * FROM users WHERE email=?', id);
+  if (!u || !verifyPassword(password, u.password_hash)) return ctx.redirect('/login', { msg: '아이디 또는 비밀번호가 맞지 않아요.', type: 'err' });
   const token = createSession(u.id);
   ctx.res.setHeader('Set-Cookie', sessionCookie(token, ctx.secure));
   const safeNext = /^\/[^/]/.test(next) ? next : null;
@@ -51,7 +52,8 @@ get('/signup', 'public', ctx => {
   <form method="post" action="/signup" class="formcard">
     <input type="hidden" name="role" value="${role}">
     <label class="field"><span>이름</span><input type="text" name="name" required maxlength="20"></label>
-    <label class="field"><span>이메일 (아이디)</span><input type="email" name="email" required autocomplete="username"></label>
+    <label class="field"><span>아이디</span><input type="text" name="username" required autocomplete="username" autocapitalize="none" pattern="[A-Za-z0-9_.]{4,20}" maxlength="20"><small>영문·숫자 4~20자. 로그인할 때 써요.</small></label>
+    <label class="field"><span>이메일 (선택)</span><input type="email" name="email" autocomplete="email"><small>비밀번호를 잊었을 때 찾는 데 써요.</small></label>
     <label class="field"><span>비밀번호</span><input type="password" name="password" required minlength="8" autocomplete="new-password"><small>8자 이상, 영문과 숫자를 함께 써 주세요.</small></label>
     <label class="field"><span>휴대폰 번호</span><input type="tel" name="phone" placeholder="010-1234-5678" required></label>
     ${br.length > 1 ? html`<label class="field"><span>지점</span><select name="branch_id">${br.map(b => html`<option value="${b.id}">${b.name}</option>`)}</select></label>` : html`<input type="hidden" name="branch_id" value="${br[0]?.id || ''}">`}
@@ -76,9 +78,14 @@ get('/signup', 'public', ctx => {
 post('/signup', 'public', ctx => {
   const b = ctx.body;
   const role = b.role === 'parent' ? 'parent' : 'student';
-  const email = (b.email || '').trim().toLowerCase();
+  const username = (b.username || '').trim().toLowerCase();
   const name = (b.name || '').trim();
-  if (!name || !/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)) bad('이름과 이메일을 확인해 주세요.');
+  if (!name) bad('이름을 입력해 주세요.');
+  if (!/^[a-z0-9_.]{4,20}$/.test(username)) bad('아이디는 영문·숫자 4~20자로 정해 주세요.');
+  if (one('SELECT 1 FROM users WHERE username=? COLLATE NOCASE', username)) bad('이미 쓰고 있는 아이디예요.');
+  let email = (b.email || '').trim().toLowerCase();
+  if (email && !/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)) bad('이메일 형식을 확인해 주세요.');
+  if (!email) email = `${username}@id.for10`;
   const p = passwordProblem(b.password); if (p) bad(p);
   if (!b.agree_terms || !b.agree_privacy) bad('필수 약관에 동의해 주세요.');
   if (one('SELECT 1 FROM users WHERE email=?', email)) bad('이미 가입된 이메일이에요.');
@@ -88,6 +95,7 @@ post('/signup', 'public', ctx => {
     role === 'student' ? (b.school || '').trim() : null, role === 'student' && GRADES.includes(b.grade) ? b.grade : null,
     role === 'student' && ['M', 'F'].includes(b.gender) ? b.gender : null, role === 'student' && isValidDate(b.birthday) ? b.birthday : null);
   const uid = Number(r.lastInsertRowid);
+  run('UPDATE users SET username=? WHERE id=?', username, uid);
   run(`INSERT INTO consents(user_id,kind) VALUES(?,'terms'),(?,'privacy')`, uid, uid);
   if (b.agree_minor) run(`INSERT INTO consents(user_id,kind) VALUES(?,'guardian')`, uid);
   if (role === 'parent' && (b.child_name || b.child_email)) requestLink(uid, name, b.child_name, b.child_email);
@@ -122,13 +130,14 @@ get('/forgot', 'public', ctx => ctx.page('비밀번호 찾기', html`<div class=
   <div class="formcard">
     <p class="mt0">원장·강사가 <b>회원 관리</b>에서 임시 비밀번호를 만들어 드려요. 임시 비밀번호로 로그인하면 바로 새 비밀번호로 바꾸게 돼요.</p>
     <form method="post" action="/forgot">
-      <label class="field"><span>가입한 이메일</span><input type="email" name="email" required></label>
+      <label class="field"><span>아이디 또는 가입한 이메일</span><input type="text" name="email" required autocapitalize="none"></label>
       <button class="btn full">초기화 요청 보내기</button>
     </form>
   </div></div>`, { bare: true }));
 
 post('/forgot', 'public', ctx => {
-  const u = one('SELECT id,name FROM users WHERE email=?', (ctx.body.email || '').trim());
+  const id = (ctx.body.email || '').trim();
+  const u = one('SELECT id,name FROM users WHERE username=? COLLATE NOCASE', id) || one('SELECT id,name FROM users WHERE email=?', id);
   if (u) notify(staffIds(), 'signup', `[비밀번호 초기화 요청] ${u.name}`, '회원 관리에서 임시 비밀번호를 만들어 주세요.', `/admin/members?q=${encodeURIComponent(u.name)}`);
   ctx.redirect('/login', '요청을 보냈어요. 학원에서 임시 비밀번호를 알려 드릴 거예요.');
 });

@@ -8,3 +8,4 @@ import './videos.js';
 import './exercises.js';
 import './admissions.js';
 import './community.js';
+import './consulting.js';

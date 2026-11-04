@@ -74,7 +74,7 @@ get('/admin/approvals', 'staff', ctx => {
   const rows = all(`SELECT u.*, b.name branch FROM users u LEFT JOIN branches b ON b.id=u.branch_id WHERE status='pending' ORDER BY u.created_at`);
   ctx.page('가입 승인', html`${pageTitle('가입 승인', '학원 수강생과 그 보호자인지 확인한 뒤 승인해 주세요. 오래된 신청부터 표시합니다.')}
   ${rows.length ? rows.map(u => html`<div class="card"><div class="flex between"><b>${u.name} <span class="muted small">· ${ROLE_LABEL[u.role]}</span></b><span class="small muted">${korDateTime(u.created_at)}</span></div>
-    <p class="small muted mt8 mb0">${u.email} · ${u.phone || '번호 없음'}${u.school ? ` · ${u.school} ${u.grade || ''}` : ''}${u.branch ? ` · ${u.branch}` : ''}</p>
+    <p class="small muted mt8 mb0">${u.username ? "@" + u.username + " · " : ""}${u.email.endsWith("@id.for10") ? "" : u.email + " · "}${u.phone || "번호 없음"}${u.school ? ` · ${u.school} ${u.grade || ''}` : ''}${u.branch ? ` · ${u.branch}` : ''}</p>
     <form method="post" action="/admin/approvals/${u.id}" class="flex mt12">${csrfField(ctx)}<button class="btn sm grow" name="v" value="approve">${icon('check')}승인</button><button class="btn sm ghost" name="v" value="reject">거절</button></form></div>`)
     : empty('승인을 기다리는 가입 신청이 없습니다')}`);
 });
@@ -115,7 +115,7 @@ get('/admin/members', 'staff', ctx => {
   let sql = `SELECT u.*, bb.name branch FROM users u LEFT JOIN branches bb ON bb.id=u.branch_id WHERE 1=1`;
   if (b === 'none') sql += ' AND u.branch_id IS NULL'; else if (b !== 'all') { sql += ' AND u.branch_id=?'; p.push(Number(b)); }
   if (r === 'student' || r === 'parent') { sql += ' AND u.role=?'; p.push(r); } else if (r === 'staff') sql += ` AND u.role IN ('owner','vice','coach')`;
-  if (q) { sql += ' AND (u.name LIKE ? OR u.email LIKE ?)'; p.push(`%${q}%`, `%${q}%`); }
+  if (q) { sql += ' AND (u.name LIKE ? OR u.email LIKE ? OR u.username LIKE ?)'; p.push(`%${q}%`, `%${q}%`, `%${q}%`); }
   sql += ` ORDER BY CASE u.role WHEN 'owner' THEN 0 WHEN 'vice' THEN 1 WHEN 'coach' THEN 2 WHEN 'student' THEN 3 ELSE 4 END, u.name`;
   const rows = all(sql, ...p); void where;
   const cntAll = one('SELECT COUNT(*) c FROM users').c;
@@ -145,7 +145,7 @@ get('/admin/members', 'staff', ctx => {
   <form class="flex mb8"><input type="hidden" name="b" value="${b}"><input type="hidden" name="r" value="${r}"><input type="search" name="q" value="${q}" placeholder="이름 또는 이메일 검색"><button class="btn sm gray" style="height:44px">검색</button></form>
   <p class="small b">${rows.length}명</p>
   <div class="list">${rows.map(u => html`<div style="display:block">
-    <div class="flex between"><div class="row-m"><b>${u.name} <span class="muted small" style="display:inline">· ${ROLE_LABEL[u.role]}</span></b><span>${u.email}${u.phone ? ' · ' + u.phone : ''}</span></div>
+    <div class="flex between"><div class="row-m"><b>${u.name} <span class="muted small" style="display:inline">· ${ROLE_LABEL[u.role]}</span></b><span>${u.username ? "@" + u.username + " · " : ""}${u.email.endsWith("@id.for10") ? "" : u.email}${u.phone ? " · " + u.phone : ""}</span></div>
       ${u.status === 'approved' ? chip(html`${icon('checkc')}승인됨`, 'green') : u.status === 'pending' ? chip('대기', 'amber') : chip('거절', 'red')}</div>
     <form method="post" action="/admin/members/${u.id}" class="flex wrapf mt8" data-autosubmit>${csrfField(ctx)}
       ${['owner', 'vice', 'coach'].includes(u.role) ? html`<select name="role" style="height:34px;width:auto">${['owner', 'vice', 'coach'].map(x => html`<option value="${x}" ${u.role === x ? 'selected' : ''}>${ROLE_LABEL[x]}</option>`)}</select>` : ''}

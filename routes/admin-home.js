@@ -52,35 +52,44 @@ get('/admin', 'staff', ctx => {
   const toReview = one(`SELECT COUNT(*) c FROM videos WHERE status='done' AND reviewed_at IS NULL`).c;
   const title = { owner: '원장님', vice: '부원장님', coach: '선생님' }[u.role];
 
+  const vNo = one(`SELECT COUNT(*) c FROM videos WHERE date(created_at,'+9 hours')>=? AND reviewed_at IS NULL`, from).c;
+  const vYes = one(`SELECT COUNT(*) c FROM videos WHERE date(created_at,'+9 hours')>=? AND reviewed_at IS NOT NULL`, from).c;
+  const lNo = one(`SELECT COUNT(*) c FROM logs WHERE date>=? AND reviewed_at IS NULL`, from).c;
+  const lYes = one(`SELECT COUNT(*) c FROM logs WHERE date>=? AND reviewed_at IS NOT NULL`, from).c;
+  const [yy, mm, dd] = t.split('-');
+  const wd = '일월화수목금토'[new Date(t + 'T00:00:00Z').getUTCDay()];
+  const tiles = [['UNIVERSITY', '대학검색', '/admin/student-predict'], ['TODAY CLASS', '오늘 수업', '/coach'], ['STUDENTS', '학생', '/students'],
+    ['TEST RECORD', '실기 기록 입력', '/ranking/entry'], ['GRADE CUT', '등급컷', '/admin/exams'], ['CALENDAR', '캘린더', '/calendar']];
+
   ctx.page('홈', html`
-  <div class="hero"><small>FOR10 BUSAN ADMIN</small><b>${u.name} ${title}, 안녕하세요</b></div>
-  <h2 class="sec">출결 현황</h2>
+  <div class="khero"><div><small>FOR10 STAFF</small><b>${u.name} ${title}</b></div><div class="kdate"><b>${Number(mm)}.${Number(dd)}</b><span>${yy} · ${wd}요일</span></div></div>
+  ${pend || pendL ? html`<div class="note amber">${icon('usercheck')}<span>승인 대기 — <a href="/admin/approvals"><u>가입 ${pend}건</u></a> · <a href="/admin/links"><u>학부모 연결 ${pendL}건</u></a></span></div>` : ''}
+  <div class="ktiles">${tiles.map(([en, ko, h], i) => html`<a href="${h}"><span class="kn">${String(i + 1).padStart(2, '0')}</span><small>${en}</small><b>${ko}</b>${icon('right')}</a>`)}</div>
+  <h2 class="sec">오늘 출결 <a class="small" href="/admin/stats">출결 통계 · CSV ${icon('right')}</a></h2>
   <div class="grid">
-    ${stat('오늘 출석·지각', `${counts.present + counts.late}명`, `지각 ${counts.late}`, '/admin/today?s=present')}
-    ${stat('오늘 결석', `${counts.absent}명`, `공결 ${counts.excused} · 미체크 ${unchecked}`, '/admin/today?s=absent')}
+    ${stat('출석·지각', `${counts.present + counts.late}명`, `지각 ${counts.late}`, '/admin/today?s=present')}
+    ${stat('결석', `${counts.absent}명`, `공결 ${counts.excused} · 미체크 ${unchecked}`, '/admin/today?s=absent')}
     ${stat('이번 달 출석률', monthRate == null ? '-' : `${monthRate}%`, '', '/admin/stats')}
     ${stat('장기 결석자', `${la}명`, '최근 30일', '/admin/stats#long-absent', la ? 'red' : '')}
   </div>
-  <h2 class="sec">직원 출근 · 오늘</h2>
-  <div class="grid c3">
-    ${stat('출근', `${sa.p || 0}/${staffN}명`, '눌러서 내 출근 남기기', '/admin/staff-attendance')}
-    ${stat('결석', `${sa.a || 0}명`, '눌러서 사유 확인', '/admin/staff-attendance?s=absent')}
-    ${stat('미체크', `${staffN - (sa.p || 0) - (sa.a || 0)}명`, '', '/admin/staff-attendance', staffN - (sa.p || 0) - (sa.a || 0) ? 'warn' : '')}
+  <h2 class="sec">영상 · 일지 확인 <small>최근 7일</small></h2>
+  <div class="grid">
+    ${stat('영상 미확인', `${vNo}개`, '', '/admin/activity?t=videos&c=no', vNo ? 'warn' : '')}
+    ${stat('영상 확인', `${vYes}개`, '', '/admin/activity?t=videos&c=yes')}
+    ${stat('일지 미확인', `${lNo}개`, '', '/admin/activity?t=logs&c=no', lNo ? 'warn' : '')}
+    ${stat('일지 확인', `${lYes}개`, '', '/admin/activity?t=logs&c=yes')}
   </div>
-  <h2 class="sec">이용 현황 · 최근 7일</h2>
+  <h2 class="sec">최근 7일 이용</h2>
   <div class="grid">
     ${stat('활동한 학생', `${active}/${studentsN}명`, '일지·영상 기준', '/admin/activity?t=students')}
     ${stat('일지', `${logsN}개`, '', '/admin/activity?t=logs')}
-    ${stat('영상 · 코멘트', `${vidN} · ${comN}`, toReview ? `확인 대기 ${toReview}개` : '', '/admin/activity?t=videos')}
+    ${stat('영상 · 코멘트', `${vidN} · ${comN}`, '', '/admin/activity?t=videos')}
     ${stat('학부모 연결 학생', `${linked}/${studentsN}명`, '', '/admin/activity?t=linked')}
   </div>
-  <div class="links">
-    <a href="/admin/approvals">${icon('usercheck')}가입 승인 대기<span class="cnt">${pend}건${icon('right')}</span></a>
-    <a href="/admin/links">${icon('link')}학부모 연결 승인 대기<span class="cnt">${pendL}건${icon('right')}</span></a>
-    <a href="/admin/stats">${icon('chart')}출결 통계 · CSV<span class="cnt">${icon('right')}</span></a>
-    <a href="/admin/classes">${icon('school')}반 관리<span class="cnt">${icon('right')}</span></a>
-    <a href="/admin/members">${icon('users')}회원 관리 · 강사 계정<span class="cnt">${icon('right')}</span></a>
-    <a href="/admin/exercises">${icon('target')}종목 · 기준값 설정<span class="cnt">${icon('right')}</span></a>
+  <div class="grid c3">
+    ${stat('직원 출근', `${sa.p || 0}/${staffN}명`, '눌러서 내 출근 남기기', '/admin/staff-attendance')}
+    ${stat('K:컨설팅', '지원', '학생별 지원·결과', '/admin/consulting/students')}
+    ${stat('반 관리', '반', '시간표·학생', '/admin/classes')}
   </div>
   <h2 class="sec">오늘 수업 · ${korDay(t)}</h2>
   ${ses.length ? html`<div class="list">${ses.map(s => {
@@ -104,21 +113,24 @@ get('/admin/today', 'staff', ctx => {
 get('/admin/activity', 'staff', ctx => {
   const t = today(); const from = addDays(t, -6);
   const tab = ['students', 'logs', 'videos', 'comments', 'linked'].includes(ctx.query.t) ? ctx.query.t : 'students';
+  const cf = ['no', 'yes'].includes(ctx.query.c) ? ctx.query.c : '';
+  const cw = cf === 'no' ? ' AND reviewed_at IS NULL' : cf === 'yes' ? ' AND reviewed_at IS NOT NULL' : '';
   const stu = all(`SELECT u.id,u.name,(SELECT COUNT(*) FROM logs l WHERE l.student_id=u.id AND l.date>=?) nl,
     (SELECT COUNT(*) FROM videos v WHERE v.student_id=u.id AND date(v.created_at,'+9 hours')>=?) nv FROM users u WHERE role='student' AND status='approved' ORDER BY name`, from, from).filter(r => r.nl || r.nv);
-  const logs = all(`SELECT l.*, u.name FROM logs l JOIN users u ON u.id=l.student_id WHERE l.date>=? ORDER BY l.date DESC, l.id DESC`, from);
-  const vids = all(`SELECT v.*, u.name, e.name ex FROM videos v JOIN users u ON u.id=v.student_id JOIN exercises e ON e.id=v.exercise_id WHERE date(v.created_at,'+9 hours')>=? ORDER BY v.id DESC`, from);
+  const logs = all(`SELECT l.*, u.name FROM logs l JOIN users u ON u.id=l.student_id WHERE l.date>=?${cw.replace(/reviewed_at/g, 'l.reviewed_at')} ORDER BY l.date DESC, l.id DESC`, from);
+  const vids = all(`SELECT v.*, u.name, e.name ex FROM videos v JOIN users u ON u.id=v.student_id JOIN exercises e ON e.id=v.exercise_id WHERE date(v.created_at,'+9 hours')>=?${cw.replace(/reviewed_at/g, 'v.reviewed_at')} ORDER BY v.id DESC`, from);
   const coms = all(`SELECT c.*, u.name author FROM comments c LEFT JOIN users u ON u.id=c.author_id WHERE date(c.created_at,'+9 hours')>=? ORDER BY c.id DESC`, from);
   const linked = all(`SELECT DISTINCT u.id, u.name, p.name parent FROM parent_links pl JOIN users u ON u.id=pl.student_id JOIN users p ON p.id=pl.parent_id WHERE pl.status='approved' ORDER BY u.name`);
   const tabs = [[`활동한 학생 ${stu.length}`, '?t=students', 'students'], [`일지 ${logs.length}`, '?t=logs', 'logs'], [`영상 ${vids.length}`, '?t=videos', 'videos'], [`코멘트 ${coms.length}`, '?t=comments', 'comments'], [`학부모 연결 ${linked.length}`, '?t=linked', 'linked']];
   let list;
   if (tab === 'students') list = stu.map(r => html`<a href="/students/${r.id}"><div class="row-m"><b>${r.name}</b></div><div class="row-r">일지 ${r.nl} · 영상 ${r.nv}${icon('right')}</div></a>`);
-  if (tab === 'logs') list = logs.map(r => html`<a href="/logs/${r.id}"><div class="row-m"><b>${r.name}</b><span>${korDay(r.date)}</span></div><div class="row-r">${icon('right')}</div></a>`);
+  if (tab === 'logs') list = logs.map(r => html`<a href="/logs/${r.id}"><div class="row-m"><b>${r.name}</b><span>${korDay(r.date)}</span></div><div class="row-r">${r.reviewed_at ? html`<span class="chip green">확인</span>` : html`<span class="chip amber">미확인</span>`}${icon('right')}</div></a>`);
   if (tab === 'videos') list = vids.map(r => html`<a href="/videos/${r.id}"><div class="row-m"><b>${r.name} · ${r.ex}</b><span>${korDateTime(r.created_at)}</span></div><div class="row-r">${r.reviewed_at ? html`<span class="chip green">강사 확인</span>` : ''}${icon('right')}</div></a>`);
   if (tab === 'comments') list = coms.map(r => html`<a href="/${r.target_type === 'log' ? 'logs' : 'videos'}/${r.target_id}"><div class="row-m"><b>${r.author || '알 수 없음'}</b><span>${r.body}</span></div><div class="row-r">${icon('right')}</div></a>`);
   if (tab === 'linked') list = linked.map(r => html`<a href="/students/${r.id}"><div class="row-m"><b>${r.name}</b><span>학부모 ${r.parent}</span></div><div class="row-r">${icon('right')}</div></a>`);
   ctx.page('이용 현황', html`${pageTitle('이용 현황 · 최근 7일', '누가 무엇을 했는지 확인해요.', ['홈', '/admin'])}
   ${pills(tabs, tab)}
+  ${['logs', 'videos'].includes(tab) ? pills([['전체', `?t=${tab}`, ''], ['미확인', `?t=${tab}&c=no`, 'no'], ['확인', `?t=${tab}&c=yes`, 'yes']], cf) : ''}
   ${list.length ? html`<div class="list">${list}</div>` : empty('기록이 없어요')}`);
 });
 
