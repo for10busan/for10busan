@@ -75,7 +75,7 @@ RestartSec=3
 [Install]
 WantedBy=multi-user.target
 EOF
-systemctl daemon-reload && systemctl enable --now for10
+systemctl daemon-reload && systemctl enable for10 && systemctl restart for10
 
 # 5) DuckDNS 주소가 늘 이 서버를 가리키도록 5분마다 갱신
 if [ -n "$DUCKDNS_TOKEN" ]; then
