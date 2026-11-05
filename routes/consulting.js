@@ -86,12 +86,12 @@ get('/admin/consulting', 'staff', ctx => {
   <div class="seg">${[['0', '실기 대학'], ['1', '무실기 대학']].map(([v, l]) => html`<a class="${(ctx.query.np || '0') === v ? 'on' : ''}" href="${qs('/admin/consulting', { ...keep, np: v })}">${l}</a>`)}</div>
   ${studentPicker(ctx, '/admin/consulting', keep, pick)}
   ${filterBar(ctx, '/admin/consulting', keep, f)}
-  <p class="small muted"><b>${rows.length}</b>곳 · 줄을 누르면 학교 시트로 가요 · 총점 = ${m === '정시' ? '수능 환산' : '내신 점수'} + 실기 만점, 여유 = 총점 − 커트라인(최초합 · 예비합), 감 = 여유 ÷ 실기 한 급간${see ? '' : ' · 커트라인은 원장·부원장만 볼 수 있어요'}</p>
-  ${rows.length ? html`<div class="card scroll-x" style="padding:8px"><table class="tbl" style="min-width:860px"><tr><th>지역</th><th>대학 · 학과</th><th>전형</th><th>모집</th><th>비율</th><th>수능최저</th><th>${m === '정시' ? '수능' : '내신'}</th><th>실기 만점</th><th>총점</th><th>커트라인<br>최초합/예비</th><th>여유<br>(점수·감)</th><th>판정</th><th>실기 종목</th></tr>
+  <p class="small muted"><b>${rows.length}</b>곳 · 줄을 누르면 학교 시트로 가요 · 총점 = ${m === '정시' ? '수능 환산' : '내신 점수'} + 실기 만점${see ? ', 여유 = 총점 − 커트라인(최초합 · 예비합), 감 = 여유 ÷ 실기 한 급간' : ''}</p>
+  ${rows.length ? html`<div class="card scroll-x" style="padding:8px"><table class="tbl" style="min-width:860px"><tr><th>지역</th><th>대학 · 학과</th><th>전형</th><th>모집</th><th>비율</th><th>수능최저</th><th>${m === '정시' ? '수능' : '내신'}</th><th>실기 만점</th><th>총점</th>${see ? html`<th>커트라인<br>최초합/예비</th><th>여유<br>(점수·감)</th><th>판정</th>` : ''}<th>실기 종목</th></tr>
     ${rows.map(({ u, c }) => html`<tr data-href="/admin/consulting/program/${u.id}${pick.s ? '?s=' + pick.s.id : ''}" style="cursor:pointer"><td>${u.region || '—'}</td><td style="text-align:left"><a href="/admin/consulting/program/${u.id}${pick.s ? '?s=' + pick.s.id : ''}"><b>${u.name}</b></a><br><span class="small">${u.dept || ''}${u.teacher_cert ? ' · 교직' : ''}</span></td>
       <td class="small">${[u.track && u.track_type && u.track.startsWith(u.track_type) ? null : u.track_type, u.track].filter(Boolean).join(" ") || '—'}</td><td>${u.quota ? u.quota + '명' : '—'}</td>
       <td class="small">${m === '정시' ? (u.suneung_ratio ?? '—') : (u.school_ratio ?? '—')} · ${u.practical_ratio ?? '—'}</td><td class="small">${u.suneung_min || 'X'}</td>
-      <td>${f1(c.base)}</td><td>${f1(c.pmax)}</td><td><b>${f1(c.total)}</b></td><td>${cutCell(ctx, c.cut)}</td><td>${see ? marginCell(c.m1, c.g1) : '—'}</td><td>${see ? verdictChip(c.verdict) : '—'}</td><td class="small" style="text-align:left">${exNames(u, ex) || '무실기'}</td></tr>`)}</table></div>
+      <td>${f1(c.base)}</td><td>${f1(c.pmax)}</td><td><b>${f1(c.total)}</b></td>${see ? html`<td>${cutCell(ctx, c.cut)}</td><td>${marginCell(c.m1, c.g1)}</td><td>${verdictChip(c.verdict)}</td>` : ''}<td class="small" style="text-align:left">${exNames(u, ex) || '무실기'}</td></tr>`)}</table></div>
     <script>document.querySelectorAll('tr[data-href]').forEach(t=>t.addEventListener('click',e=>{if(!e.target.closest('a'))location.href=t.dataset.href}))</script>`
     : empty('조건에 맞는 대학이 없어요', '대학 관리에서 전형 정보를 넣거나, 엑셀에서 한 번에 붙여 넣을 수 있어요.')}`, { active: '/admin/consulting' });
 });
@@ -127,10 +127,9 @@ get('/admin/consulting/program/:id', 'staff', ctx => {
   const back = ctx.query.from === 'search' ? ['대학검색', '/admin/student-predict'] : ['K:컨설팅 메인으로', '/admin/consulting'];
   ctx.page(uniLabel(u), html`<a class="back" href="${back[1]}">${icon('left')}${back[0]}</a>
   <div class="hero"><small>SCHOOL · ${u.admission}</small><b>${u.name}</b><div style="font-size:16px;font-weight:700">${u.dept || ''}</div>
-    <div class="small" style="color:#bbb">${[u.track && u.track_type && u.track.startsWith(u.track_type) ? null : u.track_type, u.track].filter(Boolean).join(" ")}${u.city || u.region ? ` · ${u.region || ''} ${u.city || ''}` : ''}${u.founding ? ` · ${u.founding}` : ''}${u.teacher_cert ? ' · 교직이수' : ''}</div></div>
-  <div class="grid c2 mt12">${see ? html`<div class="stat"><span class="st-l">최초합 CUT-LINE</span><b class="st-v red">${c ? f1(c.cutoff) : '—'}</b><span class="st-s">${c ? c.year + '학년도' : '입력 전'}</span></div>
-    <div class="stat"><span class="st-l">예비합격 CUT-LINE</span><b class="st-v">${c?.final != null ? f1(c.final) : '—'}</b><span class="st-s"><a class="red" href="/admin/predict?u=${u.id}&a=${encodeURIComponent(u.admission)}">커트라인 고치기 →</a></span></div>`
-    : html`<div class="stat" style="grid-column:1/-1"><span class="st-l">커트라인</span><b class="st-v small">본원에서 확인해 주세요</b><span class="st-s">원장·부원장만 볼 수 있어요</span></div>`}</div>
+    <div class="small muted">${[u.track && u.track_type && u.track.startsWith(u.track_type) ? null : u.track_type, u.track].filter(Boolean).join(" ")}${u.city || u.region ? ` · ${u.region || ''} ${u.city || ''}` : ''}${u.founding ? ` · ${u.founding}` : ''}${u.teacher_cert ? ' · 교직이수' : ''}</div></div>
+  ${see ? html`<div class="grid c2 mt12"><div class="stat"><span class="st-l">최초합 CUT-LINE</span><b class="st-v red">${c ? f1(c.cutoff) : '—'}</b><span class="st-s">${c ? c.year + '학년도' : '입력 전'}</span></div>
+    <div class="stat"><span class="st-l">예비합격 CUT-LINE</span><b class="st-v">${c?.final != null ? f1(c.final) : '—'}</b><span class="st-s"><a class="red" href="/admin/predict?u=${u.id}&a=${encodeURIComponent(u.admission)}">커트라인 고치기 →</a></span></div></div>` : ''}
   <div class="card mt12"><h3>모집 정보</h3><dl class="kv" style="grid-template-columns:100px 1fr">${kv.map(([k, v]) => html`<dt>${k}</dt><dd>${v}</dd>`)}</dl></div>
   ${u.admission !== '정시' ? html`<div class="card"><h3>내신 등급표</h3>${[5, 9].map(sys => { const t = gt[String(sys)] || []; return t.length ? html`<p class="small b mb8">${sys}등급제 ${u.school_max ? `(만점 ${fmtNum(u.school_max)})` : ''}</p><div class="scroll-x mb8"><table class="tbl"><tr>${t.map(r => html`<th>${r[0]}등급</th>`)}</tr><tr>${t.map(r => html`<td>${fmtNum(r[1], 2)}</td>`)}</tr></table></div>` : ''; })}
     ${!(gt['5'] || []).length && !(gt['9'] || []).length ? html`<p class="small muted mb0">아직 내신 등급표가 없어요.</p>` : ''}</div>` : ''}
@@ -251,7 +250,7 @@ function uniCard(ctx, u, ex, pick) {
     <div class="uc-h"><div class="uc-t"><b>${u.name}</b> <span>${u.dept || ''}</span></div>${pick.grade != null && see ? verdictChip(c.verdict) : ''}${icon('down', 'uc-i')}</div>
     <div class="uc-m">${[[u.region, u.city].filter(Boolean).join(' '), u.founding, trackText(u), u.quota ? `모집 ${u.quota}명` : null, ratioText(u)].filter(Boolean).join(' · ') || u.admission}</div>
     <div class="uc-m">실기: ${exNames(u, ex) || '무실기'}</div>
-    <div class="uc-s"><span>${isJ ? '수능' : '내신'} 만점 <b>${f1(isJ ? u.suneung_max : u.school_max)}</b></span><span>실기 만점 <b>${f1(c.pmax)}</b></span>${see ? html`<span>커트라인 <b>${c.cut ? f1(c.cut.cutoff) : '—'}</b>${c.cut?.final != null ? ` (최종 ${f1(c.cut.final)})` : ''}</span>` : html`<span class="muted">커트라인 본원 확인</span>`}
+    <div class="uc-s"><span>${isJ ? '수능' : '내신'} 만점 <b>${f1(isJ ? u.suneung_max : u.school_max)}</b></span><span>실기 만점 <b>${f1(c.pmax)}</b></span>${see ? html`<span>커트라인 <b>${c.cut ? f1(c.cut.cutoff) : '—'}</b>${c.cut?.final != null ? ` (최종 ${f1(c.cut.final)})` : ''}</span>` : ''}
       ${pick.grade != null || (isJ && c.base != null) ? html`<span class="blue">총점 <b>${f1(c.total)}</b></span>${see && c.m1 != null ? html`<span class="${c.m1 >= 0 ? 'green' : 'red'}">여유 <b>${c.m1 >= 0 ? '+' : ''}${f1(c.m1)}</b></span>` : ''}` : ''}</div>
   </summary><div class="uc-b"><p class="small muted">불러오는 중…</p></div></details>`;
 }
@@ -281,18 +280,18 @@ function uniDetail(ctx, u, ex, pick) {
   const notes = J(u.field_notes);
   return html`
   ${u.changes ? html`<div class="uc-chg"><b>전년도 대비 변경 사항</b><div>${u.changes}</div></div>` : ''}
-  <div class="uc-sec"><div class="uc-st">${isJ ? '수능' : '내신'} · 실기 · 총점 · 커트라인</div>
+  <div class="uc-sec"><div class="uc-st">${isJ ? '수능' : '내신'} · 실기 · 총점${see ? ' · 커트라인' : ''}</div>
     <div class="uc-calc" data-calc>
       <script type="application/json">${raw(JSON.stringify(data).replace(/</g, '\\u003c'))}</script>
       <div class="row2">${isJ ? html`<label class="field"><span>수능 환산 점수 ${u.suneung_max ? `(만점 ${fmtNum(u.suneung_max)})` : ''}</span><input type="number" step="any" data-k="base" value="${row.base != null ? fmtNum(row.base, 2) : ''}" placeholder="${pick.s ? '모의고사 성적이 없어요' : '예: 520'}"></label>`
         : html`<label class="field"><span>적용 학년도</span><select data-k="g"><option value="9" ${pick.g === 9 ? 'selected' : ''}>2027학년도 · 9등급제</option><option value="5" ${pick.g === 5 ? 'selected' : ''}>2028학년도 · 5등급제</option></select></label>
           <label class="field"><span>내신 등급 (소수점 가능)</span><input type="number" step="any" data-k="grade" value="${pick.grade ?? ''}" placeholder="예: 2.5"></label>`}</div>
-      <div class="uc-grid">
+      <div class="uc-grid${see ? '' : ' nocut'}">
         <div class="uc-box"><small>${isJ ? '수능' : '학생부'}</small><b data-o="base">—</b></div>
         <div class="uc-box uc-prac"><div class="flex between"><small>실기 <b data-o="prac">0</b> / ${f1(practicalMax(u))}</small>${ids.length ? html`<select data-k="gender" class="uc-sex"><option value="M">남</option><option value="F" ${data.gender === 'F' ? 'selected' : ''}>여</option></select>` : ''}</div>
           ${ids.length ? html`<div class="uc-ex">${data.ex.map(e => html`<label><span>${e.name}</span><input type="number" step="any" data-ex="${e.id}" value="${rec[e.id] ?? ''}" placeholder="기록${e.unit ? ' (' + e.unit + ')' : ''}"><em data-o="p${e.id}">0</em></label>`)}</div>` : html`<p class="small muted mb0">실기 없음</p>`}</div>
         <div class="uc-box uc-tot"><small>총점</small><b data-o="total">—</b><em data-o="margin"></em></div>
-        <div class="uc-box"><small>커트라인</small><b>${see ? (cuts[0] ? f1(cuts[0].cutoff) : '—') : '본원'}</b>${see && cuts[0]?.final != null ? html`<em>최종 ${f1(cuts[0].final)}</em>` : ''}</div>
+        ${see ? html`<div class="uc-box"><small>커트라인</small><b>${cuts[0] ? f1(cuts[0].cutoff) : '—'}</b>${cuts[0]?.final != null ? html`<em>최종 ${f1(cuts[0].final)}</em>` : ''}</div>` : ''}
       </div>
       ${see && cuts.length ? html`<div class="uc-cut"><b class="small">커트라인 비교</b><div class="scroll-x"><table class="tbl"><tr><th>학년도</th><th>최초합</th><th>최종합</th><th>평균</th><th>경쟁률</th></tr>
         ${cuts.map(c => html`<tr><td>${c.year}학년도</td><td>${f1(c.cutoff)}</td><td>${f1(c.final)}</td><td>${f1(c.average)}</td><td>${c.competition != null ? fmtNum(c.competition, 2) + ':1' : '—'}</td></tr>`)}</table></div>

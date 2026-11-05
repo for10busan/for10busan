@@ -169,7 +169,7 @@ export function predictTab(ctx, s) {
       <div><small>실기</small><b>${hasScoring ? fmtNum(prac) : '—'}</b><small>${u.practical_max ? `/ ${fmtNum(u.practical_max)}` : hasScoring ? '' : '배점표 없음'}</small></div>
       <div><small>총점</small><b class="red">${sch == null && !hasScoring ? '—' : fmtNum(total)}</b><small>${u.school_max || u.practical_max ? `/ ${fmtNum((u.school_max || 0) + (u.practical_max || 0))}` : ''}</small></div></div>
     ${see && vd ? html`<div class="verdict ${vd[1]}">${vd[0]} <span class="small" style="font-weight:600">· ${vd[2]}</span></div>` : ''}
-    <h3 class="mt12">합격선</h3>${!see ? html`<div class="note gray">${icon('info')}<span>합격선은 본원에서만 확인 가능합니다.</span></div>` : cut.length ? html`<table class="tbl"><tr><th>학년도</th><th>최초합</th><th>최종(예비)</th><th>경쟁률</th></tr>${cut.map(c => html`<tr><td>${c.year}</td><td>${fmtNum(c.cutoff)}</td><td>${c.final == null ? '—' : fmtNum(c.final)}</td><td>${c.competition == null ? '—' : c.competition + ':1'}</td></tr>`)}</table>
+    ${!see ? '' : html`<h3 class="mt12">합격선</h3>`}${!see ? '' : cut.length ? html`<table class="tbl"><tr><th>학년도</th><th>최초합</th><th>최종(예비)</th><th>경쟁률</th></tr>${cut.map(c => html`<tr><td>${c.year}</td><td>${fmtNum(c.cutoff)}</td><td>${c.final == null ? '—' : fmtNum(c.final)}</td><td>${c.competition == null ? '—' : c.competition + ':1'}</td></tr>`)}</table>
       <p class="help">평균 이상은 안정, 합격선 이상은 적정으로 판정해요. 참고용이에요.</p>` : html`<p class="small muted m0">아직 등록된 합격선이 없어요.</p>`}
     ${u.memo ? html`<p class="small mt12 mb0" style="white-space:pre-wrap">${u.memo}</p>` : ''}</div>`;
 }
