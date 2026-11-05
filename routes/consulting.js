@@ -16,7 +16,7 @@ const f1 = v => (v == null ? '—' : fmtNum(v, 1));
 function readPick(ctx) {
   const q = ctx.query;
   const s = Number(q.s) ? one(`SELECT * FROM users WHERE id=? AND role='student'`, Number(q.s)) : null;
-  const g = Number(q.g) === 9 ? 9 : Number(q.g) === 5 ? 5 : s?.grade_system || 5;
+  const g = Number(q.g) === 5 ? 5 : 9; // 처음엔 9등급제(2027학년도)
   const t = num(q.t);
   const grade = t != null ? t : s?.school_grade ?? null;
   return { s, g, t, grade, gender: s?.gender || (q.sex === 'F' ? 'F' : 'M') };
