@@ -365,3 +365,19 @@ h2.sec{font-family:'Black Han Sans','Noto Sans KR',sans-serif;font-weight:400;fo
 .expick-now{margin:12px 0 0;padding-top:10px;border-top:1px dashed var(--line);font-size:13.5px}
 .expick-now b{color:var(--red)}
 .expick-g[hidden]{display:none}
+
+/* 주요 제목 글꼴: G마켓 산스 (굵고 또렷한 스포츠 느낌, 기울임 없이) */
+@font-face{font-family:'GmarketSans';src:url('/fonts/GmarketSansBold.woff') format('woff');font-weight:700;font-display:swap}
+@font-face{font-family:'GmarketSans';src:url('/fonts/GmarketSansMedium.woff') format('woff');font-weight:500;font-display:swap}
+.ptitle h1,h2.sec,.khero b,.ktiles b,.hero b,.uc-t b,.uc-st,.card h3,.drawer-hd b,.expick-tabs button,.uc-box>b,.st-v,.kdate b{font-family:'GmarketSans','Noto Sans KR',sans-serif}
+.ptitle h1{font-weight:700;font-size:23px;letter-spacing:-.4px;transform:none;line-height:1.35;padding-top:2px}
+h2.sec{font-weight:700;font-size:17px;letter-spacing:-.3px}
+.khero b{font-weight:700;font-size:21px;letter-spacing:-.3px}
+.ktiles b{font-weight:700;font-size:17px;letter-spacing:-.3px;margin-top:4px}
+.hero b{font-weight:700;letter-spacing:-.3px}
+.uc-t b{font-weight:700;letter-spacing:-.3px}.uc-t span{font-family:'GmarketSans','Noto Sans KR',sans-serif;font-weight:500}
+.uc-st,.card h3{font-weight:700;letter-spacing:-.3px}
+.drawer-hd b{font-weight:700}
+.expick-tabs button{font-weight:700}
+.uc-box>b,.st-v{font-weight:700;letter-spacing:-.5px}
+.kdate b{font-family:'Kaushan Script',cursive}

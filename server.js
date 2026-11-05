@@ -51,7 +51,7 @@ const server = http.createServer(async (req, res) => {
   const ctx = { req, res, url, query: Object.fromEntries(url.searchParams), params: {}, body: {} };
   try {
     // 정적 파일
-    if ((req.method === 'GET' || req.method === 'HEAD') && /^\/(css|js|img|vendor)\//.test(url.pathname) || ['/manifest.webmanifest', '/sw.js', '/robots.txt'].includes(url.pathname)) {
+    if ((req.method === 'GET' || req.method === 'HEAD') && /^\/(css|js|img|vendor|fonts)\//.test(url.pathname) || ['/manifest.webmanifest', '/sw.js', '/robots.txt'].includes(url.pathname)) {
       const f = path.join(PUBLIC, path.normalize(url.pathname).replace(/^(\.\.[/\\])+/, ''));
       if (f.startsWith(PUBLIC) && serveFile(req, res, f, { cache: url.pathname === '/sw.js' ? 'no-cache' : (url.search ? 'public, max-age=31536000, immutable' : 'public, max-age=3600') })) return;
     }
