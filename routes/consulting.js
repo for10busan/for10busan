@@ -237,25 +237,104 @@ get('/admin/consulting/results', 'staff', ctx => {
 });
 
 // ---------- 대학검색 ----------
-function uniCard(ctx, u, ex, pick, href, extra = '') {
+const trackText = u => [u.track && u.track_type && u.track.startsWith(u.track_type) ? null : u.track_type, u.track].filter(Boolean).join(' ');
+const ratioText = u => u.admission === '정시'
+  ? [u.school_ratio ? `학생부 ${u.school_ratio}%` : null, u.suneung_ratio != null ? `수능 ${u.suneung_ratio}%` : null, u.practical_ratio != null ? `실기 ${u.practical_ratio}%` : null].filter(Boolean).join(' · ')
+  : [u.school_ratio != null ? `내신 ${u.school_ratio}%` : null, u.practical_ratio != null ? `실기 ${u.practical_ratio}%` : null].filter(Boolean).join(' · ');
+function uniCard(ctx, u, ex, pick) {
+  const c = programRow(u, { grade: pick.grade, system: pick.g, studentId: pick.s?.id }); const see = canSeeCutoff(ctx.user);
+  const isJ = u.admission === '정시';
+  const q = new URLSearchParams(Object.entries({ s: pick.s?.id, g: pick.g, t: pick.t }).filter(([, v]) => v != null && v !== '')).toString();
+  return html`<details class="uc" data-src="/admin/student-predict/card/${u.id}${q ? '?' + q : ''}"><summary>
+    <div class="uc-h"><div class="uc-t"><b>${u.name}</b> <span>${u.dept || ''}</span></div>${pick.grade != null && see ? verdictChip(c.verdict) : ''}${icon('down', 'uc-i')}</div>
+    <div class="uc-m">${[[u.region, u.city].filter(Boolean).join(' '), u.founding, trackText(u), u.quota ? `모집 ${u.quota}명` : null, ratioText(u)].filter(Boolean).join(' · ') || u.admission}</div>
+    <div class="uc-m">실기: ${exNames(u, ex) || '무실기'}</div>
+    <div class="uc-s"><span>${isJ ? '수능' : '내신'} 만점 <b>${f1(isJ ? u.suneung_max : u.school_max)}</b></span><span>실기 만점 <b>${f1(c.pmax)}</b></span>${see ? html`<span>커트라인 <b>${c.cut ? f1(c.cut.cutoff) : '—'}</b>${c.cut?.final != null ? ` (최종 ${f1(c.cut.final)})` : ''}</span>` : html`<span class="muted">커트라인 본원 확인</span>`}
+      ${pick.grade != null || (isJ && c.base != null) ? html`<span class="blue">총점 <b>${f1(c.total)}</b></span>${see && c.m1 != null ? html`<span class="${c.m1 >= 0 ? 'green' : 'red'}">여유 <b>${c.m1 >= 0 ? '+' : ''}${f1(c.m1)}</b></span>` : ''}` : ''}</div>
+  </summary><div class="uc-b"><p class="small muted">불러오는 중…</p></div></details>`;
+}
+function uniLinkCard(ctx, u, ex, pick, href, extra = '') {
   const c = programRow(u, { grade: pick.grade, system: pick.g, studentId: pick.s?.id }); const see = canSeeCutoff(ctx.user);
   return html`<div class="card"><a href="${href}" style="display:block"><div class="flex between"><b style="font-size:16px">${u.name}</b>${pick.grade != null && see ? verdictChip(c.verdict) : ''}</div><div class="b">${u.dept || ''}</div>
-    <p class="small muted mt8 mb0">${[[u.region, u.city].filter(Boolean).join(' '), u.founding, [u.track && u.track_type && u.track.startsWith(u.track_type) ? null : u.track_type, u.track].filter(Boolean).join(" "), u.quota ? `모집 ${u.quota}명` : null, u.school_ratio != null ? `내신 ${u.school_ratio}%` : null, u.practical_ratio != null ? `실기 ${u.practical_ratio}%` : null].filter(Boolean).join(' · ') || u.admission}</p>
+    <p class="small muted mt8 mb0">${[[u.region, u.city].filter(Boolean).join(' '), u.founding, trackText(u), u.quota ? `모집 ${u.quota}명` : null, u.school_ratio != null ? `내신 ${u.school_ratio}%` : null, u.practical_ratio != null ? `실기 ${u.practical_ratio}%` : null].filter(Boolean).join(' · ') || u.admission}</p>
     <p class="small mt8 mb0"><span class="muted">실기:</span> ${exNames(u, ex) || '무실기'}</p>
     <div class="chips mt8">${chip(`${u.admission === '정시' ? '수능' : '내신'} 만점 ${f1(u.admission === '정시' ? u.suneung_max : u.school_max)}`)}${chip(`실기 만점 ${f1(c.pmax)}`)}${see ? chip(`커트라인 ${c.cut ? f1(c.cut.cutoff) : '—'}${c.cut?.final != null ? ` (최종 ${f1(c.cut.final)})` : ''}`, 'dark') : chip('커트라인 본원 확인')}
       ${pick.grade != null ? html`${chip(`${u.admission === '정시' ? '수능' : '내신'} ${f1(c.base)}`, 'blue')}${chip(`총점 ${f1(c.total)}`, 'blue')}${see && c.m1 != null ? chip(`여유 ${c.m1 >= 0 ? '+' : ''}${f1(c.m1)}`, c.m1 >= 0 ? 'green' : 'red') : ''}` : ''}</div></a>${extra}</div>`;
 }
+function uniDetail(ctx, u, ex, pick) {
+  const see = canSeeCutoff(ctx.user); const isJ = u.admission === '정시';
+  const ids = J(u.exercises, []); const sc = J(u.scoring); const gt = J(u.grade_table);
+  const cuts = see ? all('SELECT * FROM cutoffs WHERE university_id=? ORDER BY year DESC', u.id) : [];
+  const row = programRow(u, { grade: pick.grade, system: pick.g, studentId: pick.s?.id });
+  const rec = pick.s ? Object.fromEntries(ids.map(i => [i, monthlyAvg(pick.s.id, i)])) : {};
+  const data = { isJ, g: pick.g, grade: pick.grade, base: isJ ? row.base : null, gender: pick.gender || 'M', gt, scoring: sc, rec,
+    ex: ids.map(i => ({ id: i, name: ex[i]?.name || '?', unit: ex[i]?.unit || '', hb: ex[i]?.higher_better ?? 1 })),
+    cut: see && cuts[0] ? [cuts[0].cutoff, cuts[0].final] : null };
+  const info = [['학교/전형명', u.name], ['지역 / 운영', [[u.region, u.city].filter(Boolean).join(' '), u.founding].filter(Boolean).join(' / ')], ['학과', u.dept], ['전형', trackText(u)],
+    ['모집인원', u.quota ? `${u.quota}명` : null], ['배수선발 · 단계', u.stage], ['교직이수', u.teacher_cert ? 'O' : null], ['실기 만점', practicalMax(u) != null ? `${fmtNum(practicalMax(u))}점` : null],
+    ['반영비율', ratioText(u), 1],
+    ...(isJ ? [['수능 반영 영역', u.subjects, 1], ['영역별 반영', u.subject_weights, 1], ['수능 만점', u.suneung_max != null ? `${fmtNum(u.suneung_max)}점` : null]]
+      : [['학년별 반영', u.year_weights], ['내신 반영교과', [u.subjects, u.subject_weights, u.subject_scope].filter(Boolean).join(' · '), 1]]),
+    ['수능최저', u.suneung_min || 'X'], ['면접고사', u.interview_date || 'X'], ['실기고사', u.practical_date, 1], ['메모', u.memo, 1]].filter(r => r[1]);
+  const notes = J(u.field_notes);
+  return html`
+  ${u.changes ? html`<div class="uc-chg"><b>전년도 대비 변경 사항</b><div>${u.changes}</div></div>` : ''}
+  <div class="uc-sec"><div class="uc-st">${isJ ? '수능' : '내신'} · 실기 · 총점 · 커트라인</div>
+    <div class="uc-calc" data-calc>
+      <script type="application/json">${raw(JSON.stringify(data).replace(/</g, '\\u003c'))}</script>
+      <div class="row2">${isJ ? html`<label class="field"><span>수능 환산 점수 ${u.suneung_max ? `(만점 ${fmtNum(u.suneung_max)})` : ''}</span><input type="number" step="any" data-k="base" value="${row.base != null ? fmtNum(row.base, 2) : ''}" placeholder="${pick.s ? '모의고사 성적이 없어요' : '예: 520'}"></label>`
+        : html`<label class="field"><span>적용 학년도</span><select data-k="g"><option value="9" ${pick.g === 9 ? 'selected' : ''}>2027학년도 · 9등급제</option><option value="5" ${pick.g === 5 ? 'selected' : ''}>2028학년도 · 5등급제</option></select></label>
+          <label class="field"><span>내신 등급 (소수점 가능)</span><input type="number" step="any" data-k="grade" value="${pick.grade ?? ''}" placeholder="예: 2.5"></label>`}</div>
+      <div class="uc-grid">
+        <div class="uc-box"><small>${isJ ? '수능' : '학생부'}</small><b data-o="base">—</b></div>
+        <div class="uc-box uc-prac"><div class="flex between"><small>실기 <b data-o="prac">0</b> / ${f1(practicalMax(u))}</small>${ids.length ? html`<select data-k="gender" class="uc-sex"><option value="M">남</option><option value="F" ${data.gender === 'F' ? 'selected' : ''}>여</option></select>` : ''}</div>
+          ${ids.length ? html`<div class="uc-ex">${data.ex.map(e => html`<label><span>${e.name}</span><input type="number" step="any" data-ex="${e.id}" value="${rec[e.id] ?? ''}" placeholder="기록${e.unit ? ' (' + e.unit + ')' : ''}"><em data-o="p${e.id}">0</em></label>`)}</div>` : html`<p class="small muted mb0">실기 없음</p>`}</div>
+        <div class="uc-box uc-tot"><small>총점</small><b data-o="total">—</b><em data-o="margin"></em></div>
+        <div class="uc-box"><small>커트라인</small><b>${see ? (cuts[0] ? f1(cuts[0].cutoff) : '—') : '본원'}</b>${see && cuts[0]?.final != null ? html`<em>최종 ${f1(cuts[0].final)}</em>` : ''}</div>
+      </div>
+      ${see && cuts.length ? html`<div class="uc-cut"><b class="small">커트라인 비교</b><div class="scroll-x"><table class="tbl"><tr><th>학년도</th><th>최초합</th><th>최종합</th><th>평균</th><th>경쟁률</th></tr>
+        ${cuts.map(c => html`<tr><td>${c.year}학년도</td><td>${f1(c.cutoff)}</td><td>${f1(c.final)}</td><td>${f1(c.average)}</td><td>${c.competition != null ? fmtNum(c.competition, 2) + ':1' : '—'}</td></tr>`)}</table></div>
+        ${cuts.filter(c => c.memo).map(c => html`<p class="help mb0">${c.year}학년도: ${c.memo}</p>`)}</div>` : ''}
+    </div></div>
+  <div class="uc-sec"><div class="uc-st">입시 정보</div><div class="uc-info">${info.map(([k, v, wide]) => html`<div class="${wide ? 'w' : ''}"><small>${k}</small><div>${v}</div></div>`)}</div></div>
+  ${ids.length ? html`<div class="uc-sec"><div class="flex between"><div class="uc-st mb0">실기 배점표 <span data-o="sexlabel">(${data.gender === 'F' ? '여' : '남'} 기준)</span></div></div>
+    <div class="scroll-x"><table class="uc-tbl" data-o="table"></table></div>
+    <p class="help mb0">초록색 줄이 위에서 입력한 기록이 들어가는 점수예요.${Object.keys(notes).length ? html`<br>${ids.filter(i => notes[i]).map(i => html`${ex[i]?.name}: ${[].concat(notes[i]).join(' / ')}<br>`)}` : ''}</p></div>` : ''}
+  <div class="flex mt8"><a class="btn sm ghost grow" href="/admin/consulting/program/${u.id}?from=search${pick.s ? '&st=' + pick.s.id : ''}">${icon('doc')}학교 시트 크게 보기</a>${isStaff(ctx.user) ? html`<a class="btn sm ghost grow" href="/admin/universities/${u.id}">${icon('pen')}이 학교 정보 고치기</a>` : ''}</div>`;
+}
+const UC_JS = `(()=>{const f=(v,d=1)=>v==null||isNaN(v)?'—':(+v).toFixed(d).replace(/\\.0+$/,'').replace(/(\\.\\d*?)0+$/,'$1');
+function school(t,g){if(!t||!t.length||g==null||g==='')return null;const r=[...t].sort((a,b)=>a[0]-b[0]);if(g<=r[0][0])return r[0][1];for(let i=1;i<r.length;i++)if(g<=r[i][0]){const[a,b]=r[i-1],[c,d]=r[i];return b+(d-b)*(g-a)/(c-a)}return r[r.length-1][1]}
+function pts(t,hb,v){if(!t||!t.length||v==null||v==='')return null;let b=0;for(const[th,p]of t)if(hb?v>=th:v<=th)b=Math.max(b,p);return b}
+function hit(t,hb,v){if(v==null||v===''||!t)return -1;let bi=-1,bp=-1;t.forEach(([th,p],i)=>{if((hb?v>=th:v<=th)&&p>bp){bp=p;bi=i}});return bi}
+function run(box){const D=JSON.parse(box.querySelector('script').textContent);const $=s=>box.querySelector(s);const root=box.closest('.uc-b');const O=k=>root.querySelector('[data-o="'+k+'"]');
+ const val=k=>{const e=$('[data-k="'+k+'"]');return e?e.value:''};
+ const calc=()=>{const sex=val('gender')||D.gender;let base=D.isJ?(val('base')===''?null:+val('base')):school(D.gt[val('g')||D.g],val('grade')===''?null:+val('grade'));
+  let prac=0,any=false;const rec={};D.ex.forEach(e=>{const i=$('[data-ex="'+e.id+'"]');const v=i&&i.value!==''?+i.value:null;rec[e.id]=v;const p=pts((D.scoring[e.id]||{})[sex],e.hb,v);if(p!=null){prac+=p;any=true}const o=O('p'+e.id);if(o)o.textContent=f(p??0,2)+' / '+f(Math.max(0,...((D.scoring[e.id]||{})[sex]||[[0,0]]).map(r=>r[1])),2)});
+  O('base').textContent=f(base,2);O('prac').textContent=f(prac,2);const tot=base==null&&!any?null:(base||0)+prac;O('total').textContent=f(tot,2);
+  const m=O('margin');if(m)m.textContent=D.cut&&tot!=null&&base!=null?('여유 '+(tot-D.cut[0]>=0?'+':'')+f(tot-D.cut[0],2)):'';if(m)m.className=D.cut&&tot!=null&&tot-D.cut[0]>=0?'green':'red';
+  const T=O('table');if(T){const cols=D.ex.map(e=>({e,t:((D.scoring[e.id]||{})[sex]||[])}));const n=Math.max(0,...cols.map(c=>c.t.length));
+   let h='<tr>'+cols.map(c=>'<th colspan="2">'+c.e.name+'<small>만점 '+f(Math.max(0,...c.t.map(r=>r[1])),2)+'</small></th>').join('')+'</tr><tr class="sub">'+cols.map(c=>'<td>점수</td><td>기록'+(c.e.unit?' ('+c.e.unit+')':'')+'</td>').join('')+'</tr>';
+   for(let k=0;k<n;k++){h+='<tr>'+cols.map(c=>{const r=c.t[k];if(!r)return '<td></td><td></td>';const on=hit(c.t,c.e.hb,rec[c.e.id])===k;const th=r[0]>=9999?'그 외':r[0]===0&&c.e.hb?'그 외':f(r[0],2);return '<td class="'+(on?'on':'')+'">'+f(r[1],2)+'</td><td class="'+(on?'on':'')+'">'+th+'</td>'}).join('')+'</tr>'}
+   T.innerHTML=h;const L=O('sexlabel');if(L)L.textContent='('+(sex==='F'?'여':'남')+' 기준)'}};
+ box.addEventListener('input',calc);box.addEventListener('change',calc);calc()}
+document.addEventListener('toggle',async e=>{const d=e.target;if(!(d instanceof HTMLDetailsElement)||!d.classList.contains('uc')||!d.open||d.dataset.loaded)return;d.dataset.loaded=1;
+ const b=d.querySelector('.uc-b');try{const r=await fetch(d.dataset.src,{credentials:'same-origin'});b.innerHTML=await r.text();b.querySelectorAll('[data-calc]').forEach(run)}catch(_){b.innerHTML='<p class="small red">불러오지 못했어요. 다시 열어 주세요.</p>';delete d.dataset.loaded}},true)})()`;
+get('/admin/student-predict/card/:id', 'staff', ctx => {
+  const u = one('SELECT * FROM universities WHERE id=?', ctx.params.id) || notFound();
+  ctx.send(uniDetail(ctx, u, exMap(), readPick(ctx)));
+});
 get('/admin/student-predict/jungsi', 'staff', ctx => ctx.redirect('/admin/student-predict?m=jungsi'));
 get('/admin/student-predict', 'staff', ctx => {
   const m = ctx.query.m === 'jungsi' ? '정시' : '수시'; const pick = readPick(ctx); const ex = exMap();
   const keep = { m: ctx.query.m, b: ctx.query.b, s: pick.s?.id, t: pick.t, g: ctx.query.g, r: ctx.query.r, d: ctx.query.d, q: ctx.query.q };
   const f = filterUnis(ctx, m);
   ctx.page('대학검색', html`${studentPicker(ctx, '/admin/student-predict', keep, pick)}
-  ${pageTitle('대학검색', '대학을 누르면 입시 정보와 실기 배점표가 나오고, 내신 등급·실기 기록을 넣으면 총점이 계산돼요.')}
+  ${pageTitle('대학검색', '대학을 누르면 바로 아래에 변경 사항, 총점 계산, 입시 정보, 실기 배점표가 펼쳐져요.')}
   <div class="seg"><a class="${m === '수시' ? 'on' : ''}" href="${qs('/admin/student-predict', { ...keep, m: '' })}">수시</a><a class="${m === '정시' ? 'on' : ''}" href="${qs('/admin/student-predict', { ...keep, m: 'jungsi' })}">정시</a></div>
   ${filterBar(ctx, '/admin/student-predict', keep, f)}
   <p class="small muted"><b>${f.rows.length}</b>곳 · 대학을 누르면 입시 정보와 실기 배점표가 열려요</p>
-  ${f.rows.length ? f.rows.map(u => uniCard(ctx, u, ex, pick, `/admin/consulting/program/${u.id}?from=search${pick.s ? '&st=' + pick.s.id : ''}`)) : empty('조건에 맞는 대학이 없어요')}`, { active: '/admin/student-predict' });
+  ${f.rows.length ? f.rows.map(u => uniCard(ctx, u, ex, pick)) : empty('조건에 맞는 대학이 없어요')}
+  <script>${raw(UC_JS)}</script>`, { active: '/admin/student-predict' });
 });
 
 // ---------- 커트라인 ----------
@@ -273,7 +352,7 @@ get('/admin/predict', 'staff', ctx => {
   ${pageTitle('커트라인', `대학마다 최초합·최종합 커트라인을 입력합니다 (${filled}/${total}곳 입력). 원장·부원장 화면에만 보이고, 학생·학부모·강사에게는 "본원에서 확인" 안내만 나와요.`)}
   <div class="seg"><a class="${adm === '수시' ? 'on' : ''}" href="${qs('/admin/predict', { ...keep, a: '수시' })}">수시 커트라인</a><a class="${adm === '정시' ? 'on' : ''}" href="${qs('/admin/predict', { ...keep, a: '정시' })}">정시 커트라인</a></div>
   ${filterBar(ctx, '/admin/predict', keep, f)}
-  ${(only || f.rows).map(u => uniCard(ctx, u, ex, pick, `/admin/consulting/program/${u.id}`, form(u)))}`, { active: '/admin/predict' });
+  ${(only || f.rows).map(u => uniLinkCard(ctx, u, ex, pick, `/admin/consulting/program/${u.id}`, form(u)))}`, { active: '/admin/predict' });
 });
 get('/admin/predict/:id', 'staff', ctx => {
   if (!canSeeCutoff(ctx.user)) forbidden();
