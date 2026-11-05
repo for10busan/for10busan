@@ -157,7 +157,7 @@ get('/admin/consulting/program/:id', 'staff', ctx => {
 // ---------- 학생관리 (지원 대학 8개) ----------
 const RESULT = { pass: ['최초합', 'green'], wait: ['예비합', 'blue'], fail: ['불합격', 'red'], none: ['결과 대기', ''] };
 get('/admin/consulting/students', 'staff', ctx => {
-  const y = Number(ctx.query.y) || curYear(); const gsys = Number(ctx.query.g) === 9 ? 9 : 5;
+  const y = Number(ctx.query.y) || curYear(); const gsys = Number(ctx.query.g) === 5 ? 5 : 9; // 처음엔 9등급제
   const br = branches(); const b = ctx.query.b || ''; const gr = ctx.query.gr || ''; const q = (ctx.query.q || '').trim();
   let studs = all(`SELECT u.*, bb.name branch FROM users u LEFT JOIN branches bb ON bb.id=u.branch_id WHERE role='student' AND status='approved' ORDER BY u.name`);
   const gcount = Object.fromEntries(GRADES.map(x => [x, studs.filter(s => s.grade === x).length]));

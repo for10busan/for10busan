@@ -4,7 +4,8 @@ import { one, all, run, tx } from '../lib/db.js';
 import { html, icon, pageTitle, empty, csrfField, pills, chip, monthNav } from '../lib/html.js';
 import { thisMonth, isValidMonth, korMonth, korDay, monthDays, weekday, today, isStaff, maskName, num, fmtNum, isValidDate, WEEKDAYS } from '../lib/util.js';
 import { keysForMonth, branches, notify } from '../lib/services.js';
-import { exCategory, EX_CATS } from '../lib/admissions.js';
+import { exCategory, EX_CATS, TEST_HIDE } from '../lib/admissions.js';
+const testExercises = () => all('SELECT * FROM exercises WHERE active=1 ORDER BY sort,id').filter(e => !TEST_HIDE.includes(e.name));
 
 // 종목 고르기: 도약 · 런 · 구기 · 기타 탭 → 그 안의 종목
 function exPicker(exs, cur, href) {
@@ -44,7 +45,7 @@ get('/ranking', 'user', ctx => {
       <p class="small muted mb0">같은 날 일지도 쓰고 출석도 하면 2개를 모두 받아요. 같은 종류는 하루에 한 번만 세서 하루에 최대 2개까지 모을 수 있어요. 순위는 매월 1일에 새로 시작해요. 이름은 가운데 글자를 가려서 보여요.</p></div>`);
     return;
   }
-  const exs = all('SELECT * FROM exercises WHERE active=1 ORDER BY sort,id');
+  const exs = testExercises();
   const e = exs.find(x => x.id === Number(ctx.query.e)) || exs[0];
   if (!e) return ctx.page('순위', html`${pageTitle('순위')}${seg}${empty('종목이 없어요')}`);
   const rows = all(`SELECT u.id,u.name,bb.name branch, mt.record FROM monthly_tests mt JOIN users u ON u.id=mt.student_id LEFT JOIN branches bb ON bb.id=u.branch_id
@@ -63,7 +64,7 @@ get('/ranking', 'user', ctx => {
 
 get('/ranking/entry', 'staff', ctx => {
   const ym = isValidMonth(ctx.query.m) ? ctx.query.m : thisMonth();
-  const exs = all('SELECT * FROM exercises WHERE active=1 ORDER BY sort,id');
+  const exs = testExercises();
   const e = exs.find(x => x.id === Number(ctx.query.e)) || exs[0] || notFound('종목이 없어요');
   const q = (ctx.query.q || '').trim();
   const studs = all(`SELECT u.id,u.name,bb.name branch, mt.record FROM users u LEFT JOIN branches bb ON bb.id=u.branch_id LEFT JOIN monthly_tests mt ON mt.student_id=u.id AND mt.month=? AND mt.exercise_id=?
