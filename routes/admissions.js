@@ -5,7 +5,15 @@ import { get, post, notFound, bad, forbidden } from '../lib/router.js';
 import { one, all, run, tx, J } from '../lib/db.js';
 import { html, icon, pageTitle, empty, csrfField, chip } from '../lib/html.js';
 import { num, fmtNum, isStaff, today, korDay, isValidDate, canSeeCutoff } from '../lib/util.js';
-import { EXAMS, EXAM_SUBJECTS, convertRaw, examTable, englishGrade, historyGrade } from '../lib/admissions.js';
+import { EXAMS, EXAM_SUBJECTS, convertRaw, examTable, englishGrade, historyGrade, tidyNote } from '../lib/admissions.js';
+
+// 시작할 때 한 번: 대학 메모·변경사항의 '출처' 지우고 문장마다 줄 바꿈 (이미 정리된 건 그대로)
+try {
+  for (const u of all('SELECT id, memo, changes FROM universities')) {
+    const m = tidyNote(u.memo), c = tidyNote(u.changes);
+    if (m !== u.memo || c !== u.changes) run('UPDATE universities SET memo=?, changes=? WHERE id=?', m, c, u.id);
+  }
+} catch (e) { console.error('memo tidy', e.message); }
 import { canViewStudent } from '../lib/services.js';
 import { recordSeries } from './students.js';
 
@@ -290,7 +298,7 @@ function importPrograms(list) {
     let u = one('SELECT id FROM universities WHERE name=? AND IFNULL(dept,\'\')=? AND admission=? AND IFNULL(track,\'\')=?', o.name, o.dept || '', adm, o.track || '');
     if (!u) { u = { id: Number(run('INSERT INTO universities(name,dept,admission,track,is_sample) VALUES(?,?,?,?,0)', o.name, o.dept || null, adm, o.track || null).lastInsertRowid) }; made++; } else upd++;
     const set = [], vals = [];
-    for (const k of TXT) if (o[k] != null && o[k] !== '') { set.push(k + '=?'); vals.push(String(o[k])); }
+    for (const k of TXT) if (o[k] != null && o[k] !== '') { set.push(k + '=?'); vals.push(k === 'memo' || k === 'changes' ? tidyNote(String(o[k])) : String(o[k])); }
     for (const k of NUM) if (o[k] != null && o[k] !== '' && Number.isFinite(Number(o[k]))) { set.push(k + '=?'); vals.push(Number(o[k])); }
     if (o.teacher_cert != null) { set.push('teacher_cert=?'); vals.push(o.teacher_cert ? 1 : 0); }
     if (Array.isArray(o.exercises) && o.exercises.length) {
