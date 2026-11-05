@@ -353,3 +353,4 @@ h2.sec{font-family:'Black Han Sans','Noto Sans KR',sans-serif;font-weight:400;fo
 .chip.dark{background:var(--ink)}
 .cal .ev.k{background:var(--red)}
 .kv dd{white-space:pre-wrap}
+.uc-reg{margin-top:26px;padding-left:10px;border-left:4px solid var(--red)} details.uc{scroll-margin-top:70px}

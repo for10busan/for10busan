@@ -53,6 +53,8 @@ function filterUnis(ctx, admission) {
     if (d === 'nat' && u.founding !== '국립') return false;
     return true;
   });
+  const ord = g => { const i = REGION_GROUPS.findIndex(x => x[0] === g); return i < 0 ? 99 : i; };
+  rows.sort((a, b) => ord(regionGroup(a.region)) - ord(regionGroup(b.region)) || String(a.name).localeCompare(String(b.name), 'ko') || String(a.dept || '').localeCompare(String(b.dept || ''), 'ko'));
   return { rows, counts, q, r, d };
 }
 function filterBar(ctx, base, keep, f) {
@@ -317,7 +319,10 @@ function run(box){const D=JSON.parse(box.querySelector('script').textContent);co
    for(let k=0;k<n;k++){h+='<tr>'+cols.map(c=>{const r=c.t[k];if(!r)return '<td></td><td></td>';const on=hit(c.t,c.e.hb,rec[c.e.id])===k;const th=r[0]>=9999?'그 외':r[0]===0&&c.e.hb?'그 외':f(r[0],2);return '<td class="'+(on?'on':'')+'">'+f(r[1],2)+'</td><td class="'+(on?'on':'')+'">'+th+'</td>'}).join('')+'</tr>'}
    T.innerHTML=h;const L=O('sexlabel');if(L)L.textContent='('+(sex==='F'?'여':'남')+' 기준)'}};
  box.addEventListener('input',calc);box.addEventListener('change',calc);calc()}
-document.addEventListener('toggle',async e=>{const d=e.target;if(!(d instanceof HTMLDetailsElement)||!d.classList.contains('uc')||!d.open||d.dataset.loaded)return;d.dataset.loaded=1;
+document.addEventListener('toggle',async e=>{const d=e.target;if(!(d instanceof HTMLDetailsElement)||!d.classList.contains('uc')||!d.open)return;
+ document.querySelectorAll('details.uc[open]').forEach(o=>{if(o!==d)o.open=false});
+ const top=d.getBoundingClientRect().top;if(top<70)d.scrollIntoView({block:'start'});else if(top<0)d.scrollIntoView();
+ if(d.dataset.loaded)return;d.dataset.loaded=1;
  const b=d.querySelector('.uc-b');try{const r=await fetch(d.dataset.src,{credentials:'same-origin'});b.innerHTML=await r.text();b.querySelectorAll('[data-calc]').forEach(run)}catch(_){b.innerHTML='<p class="small red">불러오지 못했어요. 다시 열어 주세요.</p>';delete d.dataset.loaded}},true)})()`;
 get('/admin/student-predict/card/:id', 'staff', ctx => {
   const u = one('SELECT * FROM universities WHERE id=?', ctx.params.id) || notFound();
@@ -333,7 +338,7 @@ get('/admin/student-predict', 'staff', ctx => {
   <div class="seg"><a class="${m === '수시' ? 'on' : ''}" href="${qs('/admin/student-predict', { ...keep, m: '' })}">수시</a><a class="${m === '정시' ? 'on' : ''}" href="${qs('/admin/student-predict', { ...keep, m: 'jungsi' })}">정시</a></div>
   ${filterBar(ctx, '/admin/student-predict', keep, f)}
   <p class="small muted"><b>${f.rows.length}</b>곳 · 대학을 누르면 입시 정보와 실기 배점표가 열려요</p>
-  ${f.rows.length ? f.rows.map(u => uniCard(ctx, u, ex, pick)) : empty('조건에 맞는 대학이 없어요')}
+  ${f.rows.length ? f.rows.map((u, i) => { const g = regionGroup(u.region); const head = !f.r && (i === 0 || regionGroup(f.rows[i - 1].region) !== g); return html`${head ? html`<h2 class="sec uc-reg">${g} <small>${f.rows.filter(x => regionGroup(x.region) === g).length}곳</small></h2>` : ''}${uniCard(ctx, u, ex, pick)}`; }) : empty('조건에 맞는 대학이 없어요')}
   <script>${raw(UC_JS)}</script>`, { active: '/admin/student-predict' });
 });
 
