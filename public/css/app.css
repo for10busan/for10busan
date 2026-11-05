@@ -354,3 +354,14 @@ h2.sec{font-family:'Black Han Sans','Noto Sans KR',sans-serif;font-weight:400;fo
 .cal .ev.k{background:var(--red)}
 .kv dd{white-space:pre-wrap}
 .uc-reg{margin-top:26px;padding-left:10px;border-left:4px solid var(--red)} details.uc{scroll-margin-top:70px}
+/* 종목 고르기 (도약·런·구기·기타) */
+.expick{padding:12px}
+.expick-tabs{display:grid;grid-template-columns:repeat(4,1fr);gap:6px;background:#f3f3f4;border-radius:12px;padding:4px;margin-bottom:12px}
+.expick-tabs button{border:0;background:none;border-radius:9px;padding:9px 4px;font:inherit;font-weight:800;font-size:14px;color:var(--ink2);cursor:pointer}
+.expick-tabs button small{display:inline-block;margin-left:4px;font-size:11px;font-weight:700;opacity:.6}
+.expick-tabs button.on{background:var(--red);color:#fff;box-shadow:0 4px 12px rgba(224,0,24,.25)}
+.expick-tabs button.on small{opacity:.85}
+.expick-g{display:flex;flex-wrap:wrap;gap:6px}
+.expick-now{margin:12px 0 0;padding-top:10px;border-top:1px dashed var(--line);font-size:13.5px}
+.expick-now b{color:var(--red)}
+.expick-g[hidden]{display:none}

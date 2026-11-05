@@ -4,6 +4,19 @@ import { one, all, run, tx } from '../lib/db.js';
 import { html, icon, pageTitle, empty, csrfField, pills, chip, monthNav } from '../lib/html.js';
 import { thisMonth, isValidMonth, korMonth, korDay, monthDays, weekday, today, isStaff, maskName, num, fmtNum, isValidDate, WEEKDAYS } from '../lib/util.js';
 import { keysForMonth, branches, notify } from '../lib/services.js';
+import { exCategory, EX_CATS } from '../lib/admissions.js';
+
+// 종목 고르기: 도약 · 런 · 구기 · 기타 탭 → 그 안의 종목
+function exPicker(exs, cur, href) {
+  const by = Object.fromEntries(EX_CATS.map(c => [c, exs.filter(x => exCategory(x.name) === c)]));
+  const curCat = exCategory(cur?.name);
+  return html`<div class="expick card">
+    <div class="expick-tabs" role="tablist">${EX_CATS.filter(c => by[c].length).map(c => html`<button type="button" role="tab" class="${c === curCat ? 'on' : ''}" data-cat="${c}" aria-selected="${c === curCat}">${c} 종목<small>${by[c].length}</small></button>`)}</div>
+    ${EX_CATS.filter(c => by[c].length).map(c => html`<div class="expick-g" data-g="${c}" ${c === curCat ? '' : 'hidden'}>${by[c].map(x => html`<a class="pill ${x.id === cur?.id ? 'on' : ''}" href="${href(x)}">${x.name}</a>`)}</div>`)}
+    ${cur ? html`<p class="expick-now">선택한 종목 <b>${cur.name}</b>${cur.unit ? html` <span class="muted">(${cur.unit})</span>` : ''}</p>` : ''}
+    <script>(()=>{const r=document.currentScript.parentElement;r.querySelectorAll('[data-cat]').forEach(b=>b.onclick=()=>{r.querySelectorAll('[data-cat]').forEach(x=>{x.classList.toggle('on',x===b);x.setAttribute('aria-selected',x===b)});r.querySelectorAll('[data-g]').forEach(g=>g.hidden=g.dataset.g!==b.dataset.cat)})})()</script>
+  </div>`;
+}
 
 const MEDAL = ['🥇', '🥈', '🥉'];
 function nameFor(ctx, r) { return isStaff(ctx.user) || r.id === ctx.user.id ? r.name : maskName(r.name); }
@@ -40,7 +53,7 @@ get('/ranking', 'user', ctx => {
   ctx.page('순위', html`${pageTitle('순위', '매달 학원에서 치르는 실기 테스트 기록으로 종목별 순위를 매겨요.')}${seg}
   ${monthNav('/ranking?v=test', ym, thisMonth(), `&e=${e.id}${bq}`)}
   ${branchPills(ctx, `/ranking?v=test&m=${ym}&e=${e.id}`, b ? String(b) : 'all')}
-  <div class="pills">${exs.map(x => html`<a class="pill ${x.id === e.id ? 'on' : ''}" href="/ranking?v=test&m=${ym}&e=${x.id}${bq}">${x.name}</a>`)}</div>
+  ${exPicker(exs, e, x => `/ranking?v=test&m=${ym}&e=${x.id}${bq}`)}
   ${isStaff(ctx.user) ? html`<a class="btn ghost full mb8" href="/ranking/entry?e=${e.id}&m=${ym}">${icon('doc')}${korMonth(ym)} ${e.name} 기록 입력</a>` : ''}
   ${rows.length ? html`<div class="list">${rows.map(r => html`<div style="${r.id === ctx.user.id ? 'background:#fff7f7' : ''}"><span class="medal">${r.rank <= 3 ? MEDAL[r.rank - 1] : r.rank}</span>
     <div class="row-m"><b>${nameFor(ctx, r)}</b>${r.branch ? html`<span>${r.branch}</span>` : ''}</div><b>${fmtNum(r.record)}${e.unit}</b></div>`)}</div>`
@@ -58,7 +71,7 @@ get('/ranking/entry', 'staff', ctx => {
   const groups = {}; for (const s of studs) (groups[s.branch || '지점 미지정'] ||= []).push(s);
   ctx.page('실기 기록 입력', html`${pageTitle('실기 테스트 기록 입력', '학생마다 이번 달 기록을 적고 저장하세요. 칸을 비우고 저장하면 그 학생의 기록이 지워져요.', ['순위', `/ranking?v=test&m=${ym}&e=${e.id}`])}
   ${monthNav(`/ranking/entry?e=${e.id}`, ym, thisMonth())}
-  <div class="pills">${exs.map(x => html`<a class="pill ${x.id === e.id ? 'on' : ''}" href="/ranking/entry?e=${x.id}&m=${ym}">${x.name}</a>`)}</div>
+  ${exPicker(exs, e, x => `/ranking/entry?e=${x.id}&m=${ym}`)}
   <form class="mb8"><input type="hidden" name="e" value="${e.id}"><input type="hidden" name="m" value="${ym}"><input type="search" name="q" value="${q}" placeholder="학생 이름 검색"></form>
   <form method="post" action="/ranking/entry" id="entry">${csrfField(ctx)}<input type="hidden" name="e" value="${e.id}"><input type="hidden" name="m" value="${ym}">
   ${Object.entries(groups).map(([g, ss]) => html`<p class="small b">${g} · ${ss.length}명</p><div class="list">${ss.map(s => html`<div><div class="row-m"><b>${s.name}</b></div>

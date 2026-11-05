@@ -5,8 +5,10 @@ import { get, post, notFound, bad, forbidden } from '../lib/router.js';
 import { one, all, run, tx, J } from '../lib/db.js';
 import { html, icon, pageTitle, empty, csrfField, chip } from '../lib/html.js';
 import { num, fmtNum, isStaff, today, korDay, isValidDate, canSeeCutoff } from '../lib/util.js';
-import { EXAMS, EXAM_SUBJECTS, convertRaw, examTable, englishGrade, historyGrade, tidyNote, schoolRegion, regionOverride, teacherCert, foundingOf } from '../lib/admissions.js';
+import { EXAMS, EXAM_SUBJECTS, convertRaw, examTable, englishGrade, historyGrade, tidyNote, canonicalExName, isDroppedEx, schoolRegion, regionOverride, teacherCert, foundingOf } from '../lib/admissions.js';
 
+import { cleanExercises } from '../lib/exclean.js';
+try { cleanExercises(); } catch (e) { console.error('ex clean', e.message); }
 // 시작할 때 한 번: 대학 메모·변경사항의 '출처' 지우고 문장마다 줄 바꿈 (이미 정리된 건 그대로)
 try {
   for (const u of all('SELECT id, memo, changes FROM universities')) {
@@ -322,7 +324,7 @@ function importPrograms(list) {
     if (o.teacher_cert != null) { set.push('teacher_cert=?'); vals.push(o.teacher_cert ? 1 : 0); }
     if (Array.isArray(o.exercises) && o.exercises.length) {
       const ids = [], sc = {}, notes = {};
-      for (const e of o.exercises) { const id = findOrMakeEx(e); ids.push(id); if (e.M || e.F) sc[id] = { M: e.M || [], F: e.F || e.M || [] }; if (e.notes) notes[id] = [].concat(e.notes); }
+      for (const e0 of o.exercises) { if (isDroppedEx(e0.name)) continue; const e = { ...e0, name: canonicalExName(e0.name) }; const id = findOrMakeEx(e); ids.push(id); if (e.M || e.F) sc[id] = { M: e.M || [], F: e.F || e.M || [] }; if (e.notes) notes[id] = [].concat(e.notes); }
       set.push('exercises=?', 'scoring=?'); vals.push(JSON.stringify(ids), JSON.stringify(sc));
       if (Object.keys(notes).length) { set.push('field_notes=?'); vals.push(JSON.stringify(notes)); }
     }
