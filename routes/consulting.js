@@ -25,12 +25,12 @@ function studentPicker(ctx, base, keep, pick) {
   const br = branches(); const b = ctx.query.b ? Number(ctx.query.b) : null;
   const studs = all(`SELECT id,name,grade,branch_id FROM users WHERE role='student' AND status='approved' ${b ? 'AND branch_id=?' : ''} ORDER BY name`, ...(b ? [b] : []));
   const cnt = id => one(`SELECT COUNT(*) c FROM users WHERE role='student' AND status='approved'${id ? ' AND branch_id=?' : ''}`, ...(id ? [id] : [])).c;
-  return html`<div class="card" style="background:#0d0d0f;color:#fff">
+  return html`<div class="card picker">
     <div class="flex wrapf mb8"><b class="small">${icon('users', 'red')} 학생 선택</b>
-      ${[[null, '전체 지점'], ...br.map(x => [x.id, x.name])].map(([id, l]) => html`<a class="pill ${b === id ? 'on' : ''}" style="${b === id ? '' : 'background:#1f2023;border-color:#2a2b2f;color:#ddd'}" href="${qs(base, { ...keep, b: id })}">${l} ${cnt(id)}</a>`)}</div>
+      ${[[null, '전체 지점'], ...br.map(x => [x.id, x.name])].map(([id, l]) => html`<a class="pill ${b === id ? 'on' : ''}" href="${qs(base, { ...keep, b: id })}">${l} ${cnt(id)}</a>`)}</div>
     <form method="get" action="${base}">${Object.entries({ ...keep, b }).filter(([k, v]) => v != null && k !== 's' && k !== 't').map(([k, v]) => html`<input type="hidden" name="${k}" value="${v}">`)}
-      <input type="search" placeholder="이름을 입력하면 바로 찾아요" data-filter-select="#pickSel" style="background:#1f2023;border-color:#2a2b2f;color:#fff" class="mb8">
-      <select name="s" id="pickSel" onchange="this.form.submit()" style="background-color:#1f2023;border-color:#2a2b2f;color:#fff"><option value="">학생을 고르면 그 학생 성적이 자동으로 들어가요</option>${studs.map(x => html`<option value="${x.id}" ${pick.s?.id === x.id ? 'selected' : ''}>${x.name} (${x.grade || ''})</option>`)}</select></form>
+      <input type="search" placeholder="이름을 입력하면 바로 찾아요" data-filter-select="#pickSel" class="mb8">
+      <select name="s" id="pickSel" onchange="this.form.submit()"><option value="">학생을 고르면 그 학생 성적이 자동으로 들어가요</option>${studs.map(x => html`<option value="${x.id}" ${pick.s?.id === x.id ? 'selected' : ''}>${x.name} (${x.grade || ''})</option>`)}</select></form>
   </div>
   <div class="card"><div class="flex between wrapf"><b class="small">내신 등급제</b>
     <div class="pills mb0">${[[9, '9등급제 (2027학년도)'], [5, '5등급제 (2028학년도)']].map(([v, l]) => html`<a class="pill ${pick.g === v ? 'on' : ''}" href="${qs(base, { ...keep, b, s: pick.s?.id, t: pick.t, g: v })}">${l}</a>`)}</div></div>
@@ -78,10 +78,10 @@ get('/admin/consulting', 'staff', ctx => {
   if (ctx.query.sort === 'margin') rows.sort((a, b) => (b.c.m1 ?? -1e9) - (a.c.m1 ?? -1e9));
   const see = canSeeCutoff(ctx.user);
   ctx.page('K:컨설팅', html`
-  <div class="hero" style="padding-bottom:16px"><small>KOREA SPORTS CONSULTING</small><b>K:컨설팅 프로그램</b><div class="small" style="color:#bbb">수시·정시 지원 예상</div>
+  <div class="hero" style="padding-bottom:16px"><small>Korea Sports Consulting</small><b>K:컨설팅 프로그램</b><div class="small muted">수시·정시 지원 예상</div>
     <div class="flex mt12" style="position:relative;z-index:1"><a class="btn sm dark" style="border:1px solid #444" href="/admin/consulting/results">${icon('doc')}K:결과분석표</a><a class="btn sm" href="/admin/consulting/students">${icon('users')}학생관리</a></div></div>
   <div class="seg mt12"><a class="${m === '수시' ? 'on' : ''}" href="${qs('/admin/consulting', { ...keep, m: '' })}">수시</a><a class="${m === '정시' ? 'on' : ''}" href="${qs('/admin/consulting', { ...keep, m: 'jungsi' })}">정시</a></div>
-  <div class="seg">${[['0', '실기 대학'], ['1', '무실기 대학']].map(([v, l]) => html`<a class="${(ctx.query.np || '0') === v ? 'on' : ''}" style="${(ctx.query.np || '0') === v ? 'background:#111' : ''}" href="${qs('/admin/consulting', { ...keep, np: v })}">${l}</a>`)}</div>
+  <div class="seg">${[['0', '실기 대학'], ['1', '무실기 대학']].map(([v, l]) => html`<a class="${(ctx.query.np || '0') === v ? 'on' : ''}" href="${qs('/admin/consulting', { ...keep, np: v })}">${l}</a>`)}</div>
   ${studentPicker(ctx, '/admin/consulting', keep, pick)}
   ${filterBar(ctx, '/admin/consulting', keep, f)}
   <p class="small muted"><b>${rows.length}</b>곳 · 줄을 누르면 학교 시트로 가요 · 총점 = ${m === '정시' ? '수능 환산' : '내신 점수'} + 실기 만점, 여유 = 총점 − 커트라인(최초합 · 예비합), 감 = 여유 ÷ 실기 한 급간${see ? '' : ' · 커트라인은 원장·부원장만 볼 수 있어요'}</p>

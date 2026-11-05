@@ -12,7 +12,7 @@ get('/', 'public', ctx => ctx.redirect(homeFor(ctx.user)));
 get('/login', 'public', ctx => {
   if (ctx.user) return ctx.redirect(homeFor(ctx.user));
   ctx.page('로그인', html`<div class="auth">
-  <a class="banner" href="/login"><img src="/img/logo-h-white.png" alt="FOR10 SPORTS ACADEMY"></a>
+  <a class="banner" href="/login"><img src="/img/logo-h.png" alt="FOR10 SPORTS ACADEMY"></a>
   <h1>로그인</h1><p class="sub">${APP_NAME}에서 승인된 계정으로 로그인하세요.</p>
   <form method="post" action="/login" class="formcard">
     <input type="hidden" name="next" value="${ctx.query.next || ''}">
@@ -46,7 +46,7 @@ get('/signup', 'public', ctx => {
   const role = ctx.query.role === 'parent' ? 'parent' : 'student';
   const br = branches();
   ctx.page('회원가입', html`<div class="auth">
-  <a class="banner" href="/login"><img src="/img/logo-h-white.png" alt="FOR10 SPORTS ACADEMY"></a>
+  <a class="banner" href="/login"><img src="/img/logo-h.png" alt="FOR10 SPORTS ACADEMY"></a>
   <h1>회원가입</h1><p class="sub">가입 후 학원에서 승인하면 이용할 수 있어요.</p>
   <div class="seg"><a href="/signup" class="${role === 'student' ? 'on' : ''}">학생</a><a href="/signup?role=parent" class="${role === 'parent' ? 'on' : ''}">학부모</a></div>
   <form method="post" action="/signup" class="formcard">
@@ -118,7 +118,7 @@ get('/pending', 'any', ctx => {
   const u = ctx.user;
   if (u.status === 'approved') return ctx.redirect(homeFor(u));
   ctx.page('승인 대기', html`<div class="auth">
-  <a class="banner" href="/login"><img src="/img/logo-h-white.png" alt="FOR10 SPORTS ACADEMY"></a>
+  <a class="banner" href="/login"><img src="/img/logo-h.png" alt="FOR10 SPORTS ACADEMY"></a>
   ${u.status === 'rejected' ? html`<h1>가입이 승인되지 않았어요</h1><p class="sub">학원에 문의해 주세요.</p>`
     : html`<h1>승인을 기다리고 있어요</h1><p class="sub">${u.name}님, 가입 신청이 접수됐어요. 학원에서 수강생·보호자인지 확인한 뒤 승인하면 바로 이용할 수 있어요.</p>`}
   <form method="post" action="/logout">${csrfField(ctx)}<button class="btn ghost full">${icon('logout')}로그아웃</button></form>

@@ -294,3 +294,61 @@ details.card[open]>summary{margin-bottom:12px}
 .uc-tbl td{padding:6px;border-bottom:1px solid var(--line)}
 .uc-tbl td:nth-child(2n){border-right:1px solid var(--line)}
 .uc-tbl td.on{background:#dcfce7;color:#137a39;font-weight:800}
+
+/* ===================================================================
+   밝은 테마 (홈페이지 FOR10 Busan과 같은 흰색 · 빨강 · 연분홍)
+   =================================================================== */
+:root{--red:#e00018;--red-d:#b80014;--red-l:#ffe9ec;--bg:#f6f6f7;--pink1:#ffd9de;--pink2:#ffb0ba;--pink3:#fff0f2;
+  --sh:0 10px 30px rgba(0,0,0,.06);--sh-r:0 14px 34px rgba(224,0,24,.14)}
+body{background:var(--bg)}
+.script{font-family:'Kaushan Script',cursive;font-weight:400}
+/* 머리줄: 흰 바탕 + 빨간 밑줄 */
+.top{background:rgba(255,255,255,.96);backdrop-filter:blur(8px);color:var(--ink);border-bottom:3px solid var(--red);box-shadow:0 4px 20px rgba(0,0,0,.06)}
+.who{color:var(--ink2)}
+.ibtn{color:var(--ink)}.ibtn:hover{background:#f3f3f4}
+.burger i{background:var(--ink)}
+.nav a{color:var(--ink2)}.nav a.on{color:var(--red)}
+/* 서랍 메뉴 머리 */
+.drawer-hd{background:linear-gradient(155deg,#ffe6e9 0%,#ffc2ca 60%,#ff9aa6 100%);color:var(--ink)}
+.drawer-hd .ibtn{color:var(--ink)}
+.drawer-hd span{opacity:.75}
+/* 제목 */
+.ptitle{border-left:5px solid var(--red)}
+.ptitle h1{font-family:'Black Han Sans','Noto Sans KR',sans-serif;font-weight:400;font-size:24px;letter-spacing:0;transform:skewX(-6deg);transform-origin:left bottom}
+h2.sec{font-family:'Black Han Sans','Noto Sans KR',sans-serif;font-weight:400;font-size:18px;letter-spacing:0}
+/* 카드 */
+.card,.uc{box-shadow:var(--sh);border:0}
+.uc[open]{border:2px solid var(--red);box-shadow:var(--sh-r)}
+.flash{background:var(--red)}
+/* 학생 홈 히어로 */
+.hero{background:linear-gradient(155deg,#fff 0%,#ffe9ec 45%,#ffc2ca 100%);color:var(--ink);box-shadow:var(--sh)}
+.hero small{font-family:'Kaushan Script',cursive;font-weight:400;letter-spacing:1px;font-size:15px}
+.hero:after{background:linear-gradient(115deg,transparent 0 34%,var(--red) 34% 44%,transparent 44% 52%,#111 52%);opacity:.9}
+/* 직원 홈 */
+.khero{background:linear-gradient(155deg,#ffffff 0%,#ffe6e9 40%,#ffb0ba 100%);color:var(--ink);box-shadow:var(--sh);position:relative;overflow:hidden;border-bottom:4px solid var(--red)}
+.khero small{font-family:'Kaushan Script',cursive;font-weight:400;letter-spacing:1px;font-size:16px;text-transform:none}
+.khero b{font-family:'Black Han Sans',sans-serif;font-weight:400;font-size:22px}
+.kdate b{font-family:'Kaushan Script',cursive;font-weight:400;color:var(--red);font-size:34px}
+.kdate span{opacity:.7}
+.ktiles a{background:#fff;color:var(--ink);box-shadow:var(--sh);border-right:4px solid var(--red);transition:transform .25s,box-shadow .25s}
+.ktiles a:hover{background:#fff;transform:translateY(-3px);box-shadow:var(--sh-r)}
+.ktiles .kn{font-family:'Kaushan Script',cursive;font-weight:400;font-size:20px}
+.ktiles small{opacity:.5}
+.ktiles b{font-family:'Black Han Sans',sans-serif;font-weight:400;font-size:18px}
+.btabs{background:#fff;box-shadow:var(--sh)}
+.btabs a.on{background:var(--red)}
+.pills.dark .pill.on{background:var(--ink);border-color:var(--ink)}
+/* 대학검색 학생 선택 상자 */
+.card.picker{background:linear-gradient(155deg,#ffffff 0%,#fff0f2 50%,#ffd9de 100%);border-top:4px solid var(--red)}
+.card.picker b.small{color:var(--ink)}
+.card.picker input,.card.picker select{background-color:#fff}
+/* 로그인 화면 배너 */
+.banner{background:linear-gradient(155deg,#fff 0%,#ffe6e9 55%,#ffb0ba 100%);box-shadow:var(--sh);border-bottom:4px solid var(--red)}
+/* 버튼 */
+.btn.dark{background:var(--ink)}
+/* 배점표 머리줄도 빨강 계열로 */
+.uc-tbl th{background:var(--red);border-right-color:rgba(255,255,255,.25)}
+.uc-tbl tr.sub td{background:#ffe9ec;color:var(--red-d)}
+.uc-chg{background:#fff8d6}
+.chip.dark{background:var(--ink)}
+.cal .ev.k{background:var(--red)}

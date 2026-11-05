@@ -222,7 +222,7 @@ get('/me', 'student', ctx => {
   const coms = all(`SELECT c.*, au.name author FROM comments c JOIN users au ON au.id=c.author_id WHERE (c.target_type='log' AND c.target_id IN (SELECT id FROM logs WHERE student_id=?)) OR (c.target_type='video' AND c.target_id IN (SELECT id FROM videos WHERE student_id=?)) ORDER BY c.id DESC LIMIT 3`, u.id, u.id);
   const ev = all(`SELECT * FROM events WHERE end_date>=? AND (branch_id IS NULL OR branch_id=?) ORDER BY start_date LIMIT 3`, t, u.branch_id || 0);
   ctx.page('홈', html`
-  <div class="hero"><small>FOR10 BUSAN</small><b>${u.name}, 오늘도 한 걸음!</b></div>
+  <div class="hero"><small>No Limit with FOR10</small><b>${u.name}, 오늘도 한 걸음!</b></div>
   <div class="grid c3 mt12">
     <a class="stat" href="/ranking"><span class="st-l">${icon('key')} 이번 달 K 열쇠</span><b class="st-v">${k.l + k.a}개</b><span class="st-s">일지 ${k.l} · 출석 ${k.a}</span></a>
     <a class="stat" href="/logs/new"><span class="st-l">${icon('pen')} 오늘 일지</span><b class="st-v ${logT ? '' : 'red'}">${logT ? '완료' : '미작성'}</b><span class="st-s">${logT ? '눌러서 고치기' : '눌러서 쓰기'}</span></a>
@@ -241,7 +241,7 @@ get('/me', 'student', ctx => {
 get('/parent', 'parent', ctx => {
   const kids = all(`SELECT pl.status, u.* FROM parent_links pl JOIN users u ON u.id=pl.student_id WHERE pl.parent_id=? ORDER BY u.name`, ctx.user.id);
   const t = today();
-  ctx.page('홈', html`<div class="hero"><small>FOR10 BUSAN PARENTS</small><b>${ctx.user.name}님, 안녕하세요</b></div>
+  ctx.page('홈', html`<div class="hero"><small>FOR10 Busan Parents</small><b>${ctx.user.name}님, 안녕하세요</b></div>
   <h2 class="sec">자녀</h2>
   ${kids.length ? kids.map(k => {
     if (k.status !== 'approved') return html`<div class="card"><b>${k.name}</b> ${chip(k.status === 'pending' ? '승인 대기' : '거절됨', k.status === 'pending' ? 'amber' : 'red')}<p class="small muted mb0">학원에서 보호자 확인 후 승인하면 기록을 볼 수 있어요.</p></div>`;

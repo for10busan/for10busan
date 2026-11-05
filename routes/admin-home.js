@@ -68,7 +68,7 @@ get('/admin', 'staff', ctx => {
     ['TEST RECORD', '실기 기록 입력', '/ranking/entry'], ['GRADE CUT', '등급컷', '/admin/exams'], ['CALENDAR', '캘린더', '/calendar']];
 
   ctx.page('홈', html`
-  <div class="khero"><div><small>FOR10 STAFF</small><b>${u.name} ${title}</b></div><div class="kdate"><b>${Number(mm)}.${Number(dd)}</b><span>${yy} · ${wd}요일</span></div></div>
+  <div class="khero"><div><small>No Limit with FOR10</small><b>${u.name} ${title}</b></div><div class="kdate"><b>${Number(mm)}.${Number(dd)}</b><span>${yy} · ${wd}요일</span></div></div>
   ${pend || pendL ? html`<div class="note amber">${icon('usercheck')}<span>승인 대기 — <a href="/admin/approvals"><u>가입 ${pend}건</u></a> · <a href="/admin/links"><u>학부모 연결 ${pendL}건</u></a></span></div>` : ''}
   <div class="ktiles">${tiles.map(([en, ko, h], i) => html`<a href="${h}"><span class="kn">${String(i + 1).padStart(2, '0')}</span><small>${en}</small><b>${ko}</b>${icon('right')}</a>`)}</div>
   ${brs.length > 1 ? html`<div class="btabs" role="tablist" aria-label="지점">${[['전체', null], ...brs.map(x => [x.name, x.id])].map(([n, id]) => html`<a role="tab" aria-selected="${id === bid}" class="${id === bid ? 'on' : ''}" href="${id ? `/admin?b=${id}` : '/admin'}">${n}</a>`)}</div>` : ''}
