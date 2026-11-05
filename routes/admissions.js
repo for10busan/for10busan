@@ -195,8 +195,8 @@ post('/me/grade', 'student', ctx => {
 
 // ---------- 관리: 대학 ----------
 function uniForm(ctx, u, action) {
-  const exs = all('SELECT id,name FROM exercises WHERE active=1 ORDER BY sort,id');
   const sel = J(u.exercises, []);
+  const exs = all('SELECT id,name FROM exercises ORDER BY sort,id').filter(e => one('SELECT active FROM exercises WHERE id=?', e.id).active || sel.includes(e.id)); // 대학이 쓰는 종목은 숨긴 종목이어도 보임
   return html`<form method="post" action="${action}" class="formcard">${csrfField(ctx)}
     <div class="row2"><label class="field"><span>대학 이름</span><input type="text" name="name" value="${u.name || ''}" required placeholder="예: 부산대학교"></label>
       <label class="field"><span>학과 (선택)</span><input type="text" name="dept" value="${u.dept || ''}" placeholder="예: 체육교육과"></label></div>
