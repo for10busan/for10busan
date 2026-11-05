@@ -26,6 +26,7 @@ try {
     const f = u.founding ? null : foundingOf(u.name); const c = !u.teacher_cert && teacherCert(u.name, u.dept);
     if (f || c) run('UPDATE universities SET founding=COALESCE(?, founding), teacher_cert=CASE WHEN ? THEN 1 ELSE teacher_cert END WHERE id=?', f, c ? 1 : 0, u.id);
   }
+  run("UPDATE universities SET founding='국립' WHERE name='서울시립대학교' AND IFNULL(founding,'')<>'국립'");
   // 안동대는 국립경국대로 이름이 바뀌어 프로그램에서 뺌
   run("DELETE FROM universities WHERE REPLACE(name,' ','') IN ('안동대학교','국립안동대학교','안동대')");
 } catch (e) { console.error('memo tidy', e.message); }

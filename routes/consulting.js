@@ -38,7 +38,7 @@ function studentPicker(ctx, base, keep, pick) {
     <p class="help mb0">${pick.s ? html`<b>${pick.s.name}</b> · 내신 ${pick.s.school_grade != null ? `${pick.s.school_grade}등급(${pick.s.grade_system || 5}등급제)` : '미입력'}${pick.t != null ? ` → 표본 ${pick.t}등급으로 보는 중` : ''}` : '학생 이름을 고르거나 표본 등급을 누르면 대학마다 여유·적정·도전이 바로 나와요.'}</p></div>
   <script>document.querySelectorAll('[data-filter-select]').forEach(i=>{const s=document.querySelector(i.dataset.filterSelect);const all=[...s.options];i.addEventListener('input',()=>{const q=i.value.trim();s.innerHTML='';all.forEach((o,k)=>{if(!k||!q||o.text.includes(q))s.append(o)});if(q&&s.options.length===2){s.selectedIndex=1}})})</script>`;
 }
-const isEdu = u => /체육교육|특수체육교육|스포츠교육/.test(u.dept || '');
+const isEdu = u => /체육교육/.test(u.dept || '') && !/특수체육/.test(u.dept || ''); // 체육교육과만 (특수체육교육과 제외)
 function filterUnis(ctx, admission) {
   const q = (ctx.query.q || '').trim(); const r = ctx.query.r || ''; const d = ctx.query.d || '';
   const np = ctx.query.np === '1';
