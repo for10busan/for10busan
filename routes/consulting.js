@@ -38,17 +38,21 @@ function studentPicker(ctx, base, keep, pick) {
     <p class="help mb0">${pick.s ? html`<b>${pick.s.name}</b> · 내신 ${pick.s.school_grade != null ? `${pick.s.school_grade}등급(${pick.s.grade_system || 5}등급제)` : '미입력'}${pick.t != null ? ` → 표본 ${pick.t}등급으로 보는 중` : ''}` : '학생 이름을 고르거나 표본 등급을 누르면 대학마다 여유·적정·도전이 바로 나와요.'}</p></div>
   <script>document.querySelectorAll('[data-filter-select]').forEach(i=>{const s=document.querySelector(i.dataset.filterSelect);const all=[...s.options];i.addEventListener('input',()=>{const q=i.value.trim();s.innerHTML='';all.forEach((o,k)=>{if(!k||!q||o.text.includes(q))s.append(o)});if(q&&s.options.length===2){s.selectedIndex=1}})})</script>`;
 }
+const isEdu = u => /체육교육|특수체육교육|스포츠교육/.test(u.dept || '');
 function filterUnis(ctx, admission) {
   const q = (ctx.query.q || '').trim(); const r = ctx.query.r || ''; const d = ctx.query.d || '';
   const np = ctx.query.np === '1';
   let rows = all('SELECT * FROM universities WHERE admission=? ORDER BY name, dept, id', admission);
   const counts = { all: rows.length }; for (const u of rows) counts[regionGroup(u.region)] = (counts[regionGroup(u.region)] || 0) + 1;
+  const inR = u => !r || regionGroup(u.region) === r;
+  counts.edu = rows.filter(u => inR(u) && isEdu(u)).length; counts.cert = rows.filter(u => inR(u) && u.teacher_cert).length; counts.nat = rows.filter(u => inR(u) && u.founding === '국립').length;
+  counts.dall = rows.filter(inR).length;
   rows = rows.filter(u => {
     const prac = J(u.exercises, []).length > 0;
     if (ctx.query.np != null && (np ? prac : !prac)) return false;
     if (q && !`${u.name} ${u.dept || ''} ${u.region || ''} ${u.city || ''}`.includes(q)) return false;
     if (r && regionGroup(u.region) !== r) return false;
-    if (d === 'edu' && !(u.dept || '').includes('체육교육')) return false;
+    if (d === 'edu' && !isEdu(u)) return false;
     if (d === 'cert' && !u.teacher_cert) return false;
     if (d === 'nat' && u.founding !== '국립') return false;
     return true;
@@ -62,8 +66,8 @@ function filterBar(ctx, base, keep, f) {
     <input type="search" name="q" value="${f.q}" placeholder="대학·학과·지역 검색 (예: 부산, 경성)" class="grow" style="min-width:160px">
     ${keep.sort !== undefined ? html`<select name="sort" style="width:auto" onchange="this.form.submit()"><option value="">기본 순서</option><option value="margin" ${ctx.query.sort === 'margin' ? 'selected' : ''}>여유 많은 순</option></select>` : ''}
     <button class="btn sm dark" style="height:44px">${icon('search')}</button></form>
-  <div class="pills scroll">${[['', `전체 지역 ${f.counts.all}`], ...REGION_GROUPS.map(([g]) => [g, `${g} ${f.counts[g] || 0}`]), ['기타', `기타 ${f.counts['기타'] || 0}`]].map(([v, l]) => html`<a class="pill ${f.r === v ? 'on' : ''}" href="${qs(base, { ...keep, r: v })}">${l}</a>`)}</div>
-  <div class="pills dark">${[['', '전체 학과'], ['edu', '체육교육'], ['cert', '교직이수'], ['nat', '국립 대학']].map(([v, l]) => html`<a class="pill ${f.d === v ? 'on' : ''}" href="${qs(base, { ...keep, d: v })}">${l}</a>`)}</div>`;
+  <div class="pills wrap">${[['', `전체 지역 ${f.counts.all}`], ...REGION_GROUPS.map(([g]) => [g, `${g} ${f.counts[g] || 0}`]), ...(f.counts['기타'] ? [['기타', `기타 ${f.counts['기타']}`]] : [])].map(([v, l]) => html`<a class="pill ${f.r === v ? 'on' : ''}" href="${qs(base, { ...keep, r: v })}">${l}</a>`)}</div>
+  <div class="pills dark">${[['', `전체 학과 ${f.counts.dall}`], ['edu', `체육교육과 ${f.counts.edu}`], ['cert', `교직이수 ${f.counts.cert}`], ['nat', `국립 대학 ${f.counts.nat}`]].map(([v, l]) => html`<a class="pill ${f.d === v ? 'on' : ''}" href="${qs(base, { ...keep, d: v })}">${l}</a>`)}</div>`;
 }
 const cutCell = (ctx, c) => (canSeeCutoff(ctx.user) ? (c ? html`${f1(c.cutoff)}${c.final != null ? html`<br><span class="muted">${f1(c.final)}</span>` : ''}` : '—') : html`<span class="muted small">본원 확인</span>`);
 const marginCell = (m, g) => (m == null ? '—' : html`<b class="${m >= 0 ? 'green' : 'red'}">${m >= 0 ? '+' : ''}${f1(m)}</b>${g != null ? html`<br><span class="small muted">${fmtNum(g, 1)}감</span>` : ''}`);

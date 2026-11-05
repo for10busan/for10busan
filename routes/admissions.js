@@ -5,7 +5,7 @@ import { get, post, notFound, bad, forbidden } from '../lib/router.js';
 import { one, all, run, tx, J } from '../lib/db.js';
 import { html, icon, pageTitle, empty, csrfField, chip } from '../lib/html.js';
 import { num, fmtNum, isStaff, today, korDay, isValidDate, canSeeCutoff } from '../lib/util.js';
-import { EXAMS, EXAM_SUBJECTS, convertRaw, examTable, englishGrade, historyGrade, tidyNote, schoolRegion } from '../lib/admissions.js';
+import { EXAMS, EXAM_SUBJECTS, convertRaw, examTable, englishGrade, historyGrade, tidyNote, schoolRegion, regionOverride, teacherCert, foundingOf } from '../lib/admissions.js';
 
 // 시작할 때 한 번: 대학 메모·변경사항의 '출처' 지우고 문장마다 줄 바꿈 (이미 정리된 건 그대로)
 try {
@@ -17,6 +17,17 @@ try {
   for (const u of all("SELECT id, name, dept FROM universities WHERE IFNULL(region,'')=''")) {
     const r = schoolRegion(u.name, u.dept); if (r) run('UPDATE universities SET region=?, city=COALESCE(NULLIF(city,\'\'), ?) WHERE id=?', r[0], r[1] || null, u.id);
   }
+  // 캠퍼스가 다른 학과는 지역을 바로잡음
+  for (const u of all('SELECT id, name, dept, region, city FROM universities')) {
+    const o = regionOverride(u.name, u.dept); if (o && (u.region !== o[0] || (u.city || '') !== o[1])) run('UPDATE universities SET region=?, city=? WHERE id=?', o[0], o[1] || null, u.id);
+  }
+  // 국립/사립, 교직이수 채우기
+  for (const u of all("SELECT id, name, dept, founding, teacher_cert FROM universities")) {
+    const f = u.founding ? null : foundingOf(u.name); const c = !u.teacher_cert && teacherCert(u.name, u.dept);
+    if (f || c) run('UPDATE universities SET founding=COALESCE(?, founding), teacher_cert=CASE WHEN ? THEN 1 ELSE teacher_cert END WHERE id=?', f, c ? 1 : 0, u.id);
+  }
+  // 안동대는 국립경국대로 이름이 바뀌어 프로그램에서 뺌
+  run("DELETE FROM universities WHERE REPLACE(name,' ','') IN ('안동대학교','국립안동대학교','안동대')");
 } catch (e) { console.error('memo tidy', e.message); }
 import { canViewStudent } from '../lib/services.js';
 import { recordSeries } from './students.js';
@@ -304,7 +315,9 @@ function importPrograms(list) {
     const set = [], vals = [];
     for (const k of TXT) if (o[k] != null && o[k] !== '') { set.push(k + '=?'); vals.push(k === 'memo' || k === 'changes' ? tidyNote(String(o[k])) : String(o[k])); }
     for (const k of NUM) if (o[k] != null && o[k] !== '' && Number.isFinite(Number(o[k]))) { set.push(k + '=?'); vals.push(Number(o[k])); }
-    if (!o.region) { const rg = schoolRegion(o.name, o.dept); if (rg) { set.push('region=?', 'city=?'); vals.push(rg[0], rg[1] || null); } }
+    if (!o.founding) { set.push('founding=?'); vals.push(foundingOf(o.name)); }
+    if (o.teacher_cert == null && teacherCert(o.name, o.dept)) { set.push('teacher_cert=?'); vals.push(1); }
+    if (!o.region || regionOverride(o.name, o.dept)) { const rg = schoolRegion(o.name, o.dept); if (rg) { set.push('region=?', 'city=?'); vals.push(rg[0], rg[1] || null); } }
     if (o.teacher_cert != null) { set.push('teacher_cert=?'); vals.push(o.teacher_cert ? 1 : 0); }
     if (Array.isArray(o.exercises) && o.exercises.length) {
       const ids = [], sc = {}, notes = {};
