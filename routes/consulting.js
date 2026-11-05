@@ -9,6 +9,7 @@ import { REGION_GROUPS, regionGroup, uniLabel, schoolScore, practicalScore, maxP
 const exMap = () => Object.fromEntries(all('SELECT id,name,unit,higher_better FROM exercises').map(e => [e.id, e]));
 const curYear = () => Number(today().slice(0, 4)) + (Number(today().slice(5, 7)) >= 3 ? 1 : 0); // 입시 학년도
 const SAMPLE = [1, 1.5, 2, 2.5, 3, 3.5, 4, 4.5, 5];
+const PCTS = [100, 97, 95, 93, 90, 88, 85, 80, 75, 70, 65, 60, 55, 50, 45, 40, 35, 30]; // 정시 백분위 표본
 const qs = (base, o) => base + '?' + new URLSearchParams(Object.entries(o).filter(([, v]) => v != null && v !== '' && v !== false)).toString();
 const f1 = v => (v == null ? '—' : fmtNum(v, 1));
 
@@ -19,23 +20,25 @@ function readPick(ctx) {
   const g = Number(q.g) === 5 ? 5 : 9; // 처음엔 9등급제(2027학년도)
   const t = num(q.t);
   const grade = t != null ? t : s?.school_grade ?? null;
-  return { s, g, t, grade, gender: s?.gender || (q.sex === 'F' ? 'F' : 'M') };
+  const p = num(q.p);
+  return { s, g, t, grade, p: p != null && p >= 0 && p <= 100 ? p : null, gender: s?.gender || (q.sex === 'F' ? 'F' : 'M') };
 }
-function studentPicker(ctx, base, keep, pick) {
+function studentPicker(ctx, base, keep, pick, mode = '') {
   const br = branches(); const b = ctx.query.b ? Number(ctx.query.b) : null;
   const studs = all(`SELECT id,name,grade,branch_id FROM users WHERE role='student' AND status='approved' ${b ? 'AND branch_id=?' : ''} ORDER BY name`, ...(b ? [b] : []));
   const cnt = id => one(`SELECT COUNT(*) c FROM users WHERE role='student' AND status='approved'${id ? ' AND branch_id=?' : ''}`, ...(id ? [id] : [])).c;
   return html`<div class="card picker">
     <div class="flex wrapf mb8"><b class="small">${icon('users', 'red')} 학생 선택</b>
       ${[[null, '전체 지점'], ...br.map(x => [x.id, x.name])].map(([id, l]) => html`<a class="pill ${b === id ? 'on' : ''}" href="${qs(base, { ...keep, b: id })}">${l} ${cnt(id)}</a>`)}</div>
-    <form method="get" action="${base}">${Object.entries({ ...keep, b }).filter(([k, v]) => v != null && k !== 's' && k !== 't').map(([k, v]) => html`<input type="hidden" name="${k}" value="${v}">`)}
+    <form method="get" action="${base}">${Object.entries({ ...keep, b }).filter(([k, v]) => v != null && v !== '' && !['s', 't', 'p'].includes(k)).map(([k, v]) => html`<input type="hidden" name="${k}" value="${v}">`)}
       <input type="search" placeholder="이름을 입력하면 바로 찾아요" data-filter-select="#pickSel" class="mb8">
       <select name="s" id="pickSel" onchange="this.form.submit()"><option value="">학생을 고르면 그 학생 성적이 자동으로 들어가요</option>${studs.map(x => html`<option value="${x.id}" ${pick.s?.id === x.id ? 'selected' : ''}>${x.name} (${x.grade || ''})</option>`)}</select></form>
   </div>
-  <div class="card"><div class="flex between wrapf"><b class="small">내신 등급제</b>
+  ${mode === 'jungsi' ? html`<div class="card"><div class="pills mb0 jpct"><span class="small b" style="align-self:center;margin-right:2px">표본</span>${PCTS.map(v => html`<a class="pill ${pick.p === v ? 'on' : ''}" href="${qs(base, { ...keep, b, s: '', p: v })}">백${v}</a>`)}</div>
+    <p class="help mb0">${pick.s ? html`<b>${pick.s.name}</b> · 최근 모의고사 국·수·탐 백분위로 수능 환산${pick.p != null ? ` → 표본 백분위 ${pick.p}로 보는 중` : ''}` : pick.p != null ? `표본 백분위 ${pick.p}(국·수·탐 평균)로 수능 환산 점수를 계산하고 있어요.` : '학생 이름을 입력하거나 백분위 표본을 누르면 대학마다 여유·적정·도전이 바로 나와요.'}</p></div>` : html`  <div class="card"><div class="flex between wrapf"><b class="small">내신 등급제</b>
     <div class="pills mb0">${[[9, '9등급제 (2027학년도)'], [5, '5등급제 (2028학년도)']].map(([v, l]) => html`<a class="pill ${pick.g === v ? 'on' : ''}" href="${qs(base, { ...keep, b, s: pick.s?.id, t: pick.t, g: v })}">${l}</a>`)}</div></div>
     <div class="pills mt8 mb0"><span class="small muted" style="align-self:center">표본</span>${SAMPLE.map(v => html`<a class="pill ${pick.t === v ? 'on' : ''}" href="${qs(base, { ...keep, b, g: pick.g, t: v })}">${v}등급</a>`)}</div>
-    <p class="help mb0">${pick.s ? html`<b>${pick.s.name}</b> · 내신 ${pick.s.school_grade != null ? `${pick.s.school_grade}등급(${pick.s.grade_system || 5}등급제)` : '미입력'}${pick.t != null ? ` → 표본 ${pick.t}등급으로 보는 중` : ''}` : '학생 이름을 고르거나 표본 등급을 누르면 대학마다 여유·적정·도전이 바로 나와요.'}</p></div>
+    <p class="help mb0">${pick.s ? html`<b>${pick.s.name}</b> · 내신 ${pick.s.school_grade != null ? `${pick.s.school_grade}등급(${pick.s.grade_system || 5}등급제)` : '미입력'}${pick.t != null ? ` → 표본 ${pick.t}등급으로 보는 중` : ''}` : '학생 이름을 고르거나 표본 등급을 누르면 대학마다 여유·적정·도전이 바로 나와요.'}</p></div>`}
   <script>document.querySelectorAll('[data-filter-select]').forEach(i=>{const s=document.querySelector(i.dataset.filterSelect);const all=[...s.options];i.addEventListener('input',()=>{const q=i.value.trim();s.innerHTML='';all.forEach((o,k)=>{if(!k||!q||o.text.includes(q))s.append(o)});if(q&&s.options.length===2){s.selectedIndex=1}})})</script>`;
 }
 const isEdu = u => /체육교육/.test(u.dept || '') && !/특수체육/.test(u.dept || ''); // 체육교육과만 (특수체육교육과 제외)
@@ -66,7 +69,7 @@ function filterBar(ctx, base, keep, f) {
     <input type="search" name="q" value="${f.q}" placeholder="대학·학과·지역 검색 (예: 부산, 경성)" class="grow" style="min-width:160px">
     ${keep.sort !== undefined ? html`<select name="sort" style="width:auto" onchange="this.form.submit()"><option value="">기본 순서</option><option value="margin" ${ctx.query.sort === 'margin' ? 'selected' : ''}>여유 많은 순</option></select>` : ''}
     <button class="btn sm dark" style="height:44px">${icon('search')}</button></form>
-  <div class="pills wrap">${[['', `전체 지역 ${f.counts.all}`], ...REGION_GROUPS.map(([g]) => [g, `${g} ${f.counts[g] || 0}`]), ...(f.counts['기타'] ? [['기타', `기타 ${f.counts['기타']}`]] : [])].map(([v, l]) => html`<a class="pill ${f.r === v ? 'on' : ''}" href="${qs(base, { ...keep, r: v })}">${l}</a>`)}</div>
+  <div class="pills">${[['', `전체 지역 ${f.counts.all}`], ...REGION_GROUPS.map(([g]) => [g, `${g} ${f.counts[g] || 0}`]), ...(f.counts['기타'] ? [['기타', `기타 ${f.counts['기타']}`]] : [])].map(([v, l]) => html`<a class="pill ${f.r === v ? 'on' : ''}" href="${qs(base, { ...keep, r: v })}">${l}</a>`)}</div>
   <div class="pills dark">${[['', `전체 학과 ${f.counts.dall}`], ['edu', `체육교육과 ${f.counts.edu}`], ['cert', `교직이수 ${f.counts.cert}`], ['nat', `국립 대학 ${f.counts.nat}`]].map(([v, l]) => html`<a class="pill ${f.d === v ? 'on' : ''}" href="${qs(base, { ...keep, d: v })}">${l}</a>`)}</div>`;
 }
 const cutCell = (ctx, c) => (canSeeCutoff(ctx.user) ? (c ? html`${f1(c.cutoff)}${c.final != null ? html`<br><span class="muted">${f1(c.final)}</span>` : ''}` : '—') : html`<span class="muted small">본원 확인</span>`);
@@ -78,6 +81,7 @@ const exNames = (u, ex) => J(u.exercises, []).map(i => ex[i]?.name).filter(Boole
 get('/admin/consulting', 'staff', ctx => {
   const m = ctx.query.m === 'jungsi' ? '정시' : '수시';
   const pick = readPick(ctx); const ex = exMap();
+  if (m === '정시') return jungsiPage(ctx, pick, ex);
   const keep = { m: ctx.query.m, np: ctx.query.np, b: ctx.query.b, s: pick.s?.id, t: pick.t, g: ctx.query.g, r: ctx.query.r, d: ctx.query.d, q: ctx.query.q, sort: ctx.query.sort || '' };
   const f = filterUnis(ctx, m);
   let rows = f.rows.map(u => ({ u, c: programRow(u, { grade: pick.grade, system: pick.g, studentId: pick.s?.id }) }));
@@ -97,8 +101,82 @@ get('/admin/consulting', 'staff', ctx => {
       <td class="small">${m === '정시' ? (u.suneung_ratio ?? '—') : (u.school_ratio ?? '—')} · ${u.practical_ratio ?? '—'}</td><td class="small">${u.suneung_min || 'X'}</td>
       <td>${f1(c.base)}</td><td>${f1(c.pmax)}</td><td><b>${f1(c.total)}</b></td>${see ? html`<td>${cutCell(ctx, c.cut)}</td><td>${marginCell(c.m1, c.g1)}</td><td>${verdictChip(c.verdict)}</td>` : ''}<td class="small" style="text-align:left">${exNames(u, ex) || '무실기'}</td></tr>`)}</table></div>
     <script>document.querySelectorAll('tr[data-href]').forEach(t=>t.addEventListener('click',e=>{if(!e.target.closest('a'))location.href=t.dataset.href}))</script>`
-    : empty('조건에 맞는 대학이 없어요', '대학 관리에서 전형 정보를 넣거나, 엑셀에서 한 번에 붙여 넣을 수 있어요.')}`, { active: '/admin/consulting' });
+    : empty('조건에 맞는 대학이 없어요', '대학 관리에서 전형 정보를 넣거나, 엑셀에서 한 번에 붙여 넣을 수 있어요.')}`, { active: '/admin/consulting', wide: true });
 });
+
+// ---------- K:컨설팅 정시: 군별 한눈에 보는 표 ----------
+const GUN_ORDER = ['가', '나', '다'];
+const gunOf = u => (String(u.track_type || '').match(/([가나다])\s*군/) || String(u.track || '').match(/([가나다])\s*군/) || [])[1] || '';
+const EX_SHORT = [[/윗몸일으키기/, '싯업'], [/제자리멀리뛰기/, '제멀'], [/^10m/, '10m'], [/^20m 왕복달리기/, '20m'], [/^25m/, '25m'], [/메디신볼/, '메디신'], [/지그재그/, '지그재그'],
+  [/^Z런/i, 'Z런'], [/서전트/, '서전트'], [/높이뛰기/, '높뛰'], [/배면/, '배면'], [/핸드볼/, '핸던'], [/농구/, '농구'], [/배구/, '배구'], [/중량/, '중량런'], [/사이드스텝/, '사이드'],
+  [/벽치기/, '벽치기'], [/에르고/, '에르고'], [/매달리기/, '매달리기'], [/(\d+)m 달리기/, m => m[1] + 'm']];
+const exShort = n => { for (const [re, v] of EX_SHORT) { const m = String(n).match(re); if (m) return typeof v === 'function' ? v(m) : v; } return n; };
+const quotaText = u => (u.quota ? String(u.quota) : /이월|미충원/.test(`${u.stage || ''} ${u.track || ''} ${u.memo || ''}`) ? '이월' : '—');
+const nz = v => (v ? fmtNum(v, 1) : '·');
+const mg = (m, g) => (m == null ? '—' : html`<b class="${m >= 0 ? 'green' : 'red'}">${m >= 0 ? '+' : ''}${fmtNum(m, 1)}</b>${g != null ? html`<span class="muted"> · ${fmtNum(g, 1)}감</span>` : ''}`);
+function jungsiPage(ctx, pick, ex) {
+  const base = '/admin/consulting'; const see = canSeeCutoff(ctx.user); const gun = GUN_ORDER.includes(ctx.query.gun) ? ctx.query.gun : '';
+  const keep = { m: 'jungsi', np: ctx.query.np, b: ctx.query.b, s: pick.s?.id, p: pick.p, t: pick.t, g: ctx.query.g, r: ctx.query.r, d: ctx.query.d, q: ctx.query.q, gun, sort: ctx.query.sort || '' };
+  if (ctx.query.np == null) ctx.query.np = '0'; // 처음엔 실기 대학
+  const f = filterUnis(ctx, '정시');
+  const gunCnt = { '': f.rows.length }; for (const u of f.rows) { const g = gunOf(u); gunCnt[g] = (gunCnt[g] || 0) + 1; }
+  let list = f.rows.filter(u => !gun || gunOf(u) === gun);
+  const gi = u => { const i = GUN_ORDER.indexOf(gunOf(u)); return i < 0 ? 9 : i; };
+  list.sort((a, b) => gi(a) - gi(b) || String(a.name).localeCompare(String(b.name), 'ko') || String(a.dept || '').localeCompare(String(b.dept || ''), 'ko'));
+  let rows = list.map(u => ({ u, c: programRow(u, { grade: pick.grade, system: pick.g, studentId: pick.s?.id, pct: pick.p }) }));
+  if (ctx.query.sort === 'margin') rows.sort((a, b) => (b.c.m1 ?? -1e9) - (a.c.m1 ?? -1e9));
+  const schoolN = list.filter(u => u.school_ratio > 0).length;
+  const y = curYear();
+  const fkeep = Object.entries(keep).filter(([k, v]) => v != null && v !== '' && !['q', 'sort', 't'].includes(k));
+  ctx.page('K:컨설팅 정시', html`
+  <div class="hero" style="padding-bottom:16px"><small>Korea Sports Consulting</small><b>K:컨설팅 프로그램</b><div class="small muted">수시·정시 지원 예상</div>
+    <div class="flex mt12" style="position:relative;z-index:1"><a class="btn sm dark" style="border:1px solid #444" href="/admin/consulting/results">${icon('doc')}K:결과분석표</a><a class="btn sm" href="/admin/consulting/students">${icon('users')}학생관리</a></div></div>
+  <div class="seg mt12"><a href="${qs(base, { ...keep, m: '', p: '', gun: '' })}">수시</a><a class="on" href="${qs(base, keep)}">정시</a></div>
+  <div class="seg">${[['0', '실기 대학'], ['1', '무실기 대학']].map(([v, l]) => html`<a class="${(ctx.query.np || '0') === v ? 'on' : ''}" href="${qs(base, { ...keep, np: v })}">${l}</a>`)}</div>
+  ${studentPicker(ctx, base, keep, pick, 'jungsi')}
+  <form method="get" action="${base}" class="flex wrapf mb8">${fkeep.map(([k, v]) => html`<input type="hidden" name="${k}" value="${v}">`)}${pick.t != null ? html`<input type="hidden" name="t" value="${pick.t}">` : ''}
+    <input type="search" name="q" value="${f.q}" placeholder="대학·학과·지역 검색" class="grow" style="min-width:160px">
+    <select name="sort" style="width:auto" onchange="this.form.submit()"><option value="">기본 순서 (군 → 대학)</option><option value="margin" ${ctx.query.sort === 'margin' ? 'selected' : ''}>여유 많은 순</option></select></form>
+  <div class="jfil">
+    <div class="pills mb0">${[['', '전체 군'], ...GUN_ORDER.map(g => [g, g + '군'])].map(([v, l]) => html`<a class="pill ${gun === v ? 'on' : ''}" href="${qs(base, { ...keep, gun: v })}">${l} <small>${gunCnt[v] || 0}</small></a>`)}</div>
+    <div class="pills mb0">${[['', '전체 지역'], ...REGION_GROUPS.map(([g]) => [g, g])].map(([v, l]) => html`<a class="pill ${f.r === v ? 'on' : ''}" href="${qs(base, { ...keep, r: v })}">${l}</a>`)}</div>
+  </div>
+  <div class="jfil">
+    <div class="pills dark mb0">${[['', '전체 학과'], ['edu', '체육교육'], ['cert', '교직이수'], ['nat', '국립 대학']].map(([v, l]) => html`<a class="pill ${f.d === v ? 'on' : ''}" href="${qs(base, { ...keep, d: v })}">${l}</a>`)}</div>
+    <form method="get" action="${base}" class="jgrade">${fkeep.map(([k, v]) => html`<input type="hidden" name="${k}" value="${v}">`)}${ctx.query.sort ? html`<input type="hidden" name="sort" value="${ctx.query.sort}">` : ''}
+      <b>내신 등급</b><select name="t" onchange="this.form.submit()"><option value="">${pick.s?.school_grade != null && pick.t == null ? `학생 ${fmtNum(pick.s.school_grade, 2)}` : '없음'}</option>${[1, 1.5, 2, 2.5, 3, 3.5, 4, 4.5, 5, 5.5, 6, 6.5, 7, 7.5, 8, 8.5, 9].map(v => html`<option value="${v}" ${pick.t === v ? 'selected' : ''}>${v}등급</option>`)}</select>
+      <span class="small muted">내신 반영 ${schoolN}곳에 적용</span></form>
+  </div>
+  <p class="small muted mt8">${rows.length}곳 · 총점 = 수능 환산 + 내신 + 실기 만점${see ? ', 여유 = 총점 − 예상 커트라인(최초합 · 예비합) · 커트라인 칸을 누르면 최초합·예비합을 바로 고칠 수 있어요' : ''}</p>
+  ${rows.length ? html`<div class="jt-wrap" data-csrf="${ctx.csrf}" data-year="${y}"><table class="jt${see ? '' : ' nocut'}">
+    <thead><tr><th rowspan="2">군</th><th rowspan="2">지역</th><th rowspan="2" class="l">대학 · 학과</th><th rowspan="2">모집</th><th colspan="3">비율</th><th rowspan="2">수능 환산</th><th rowspan="2">내신</th><th rowspan="2">실기 만점</th><th rowspan="2">총점</th>
+      ${see ? html`<th colspan="2">커트라인</th><th colspan="2">여유 (점수 · 감)</th><th rowspan="2">판정</th>` : ''}<th rowspan="2" class="l">실기 종목</th></tr>
+      <tr class="sub"><th>수능</th><th>내신</th><th>실기</th>${see ? html`<th>최초합</th><th>예비합</th><th>최초합</th><th>예비합</th>` : ''}</tr></thead>
+    <tbody>${rows.map(({ u, c }) => { const href = `/admin/consulting/program/${u.id}${pick.s ? '?s=' + pick.s.id : ''}`; const exs = J(u.exercises, []).map(i => ex[i]?.name).filter(Boolean);
+      return html`<tr id="u${u.id}"><td class="gun">${gunOf(u) || '—'}</td><td class="reg">${regionGroup(u.region)}<span>${u.city || u.region || ''}</span></td>
+      <td class="l nm"><a href="${href}">${u.name} <b>${u.dept || ''}</b></a>${u.teacher_cert ? html` <span class="tag">교직</span>` : ''}</td><td>${quotaText(u)}</td>
+      <td>${nz(u.suneung_ratio)}</td><td>${nz(u.school_ratio)}</td><td>${nz(u.practical_ratio)}</td>
+      <td class="nowrap">${c.base != null ? html`<b>${fmtNum(c.base, 2)}</b>` : '—'}<span class="muted" title="${c.smaxEst ? '수능 만점이 입력되지 않아 실기 만점과 반영비율로 추정한 값' : ''}">/${c.smax ? (c.smaxEst ? '≈' : '') + fmtNum(c.smax, 2) : '—'}</span></td>
+      <td>${u.school_ratio > 0 ? (c.school != null ? fmtNum(c.school, 2) : html`<span class="need">필요</span>`) : 'X'}</td>
+      <td class="nowrap">${c.pmax != null ? html`${fmtNum(c.pmax, 2)}${c.step ? html`<span class="muted">/${fmtNum(c.step, 2)}</span>` : ''}` : 'X'}</td>
+      <td class="tot">${c.base != null ? fmtNum(c.total, 2) : '—'}</td>
+      ${see ? html`<td class="cut" data-u="${u.id}" data-y="${c.cut?.year || y}" data-c="${c.cut?.cutoff ?? ''}" data-f="${c.cut?.final ?? ''}" title="눌러서 고치기"><b>${c.cut ? fmtNum(c.cut.cutoff, 2) : '—'}</b> ${icon('pen', 'pen')}</td><td class="cut" data-u="${u.id}" data-y="${c.cut?.year || y}" data-c="${c.cut?.cutoff ?? ''}" data-f="${c.cut?.final ?? ''}" title="눌러서 고치기">${c.cut?.final != null ? fmtNum(c.cut.final, 2) : '—'}</td>
+        <td class="nowrap">${mg(c.m1, c.g1)}</td><td class="nowrap">${mg(c.m2, c.g2)}</td><td>${verdictChip(c.verdict)}</td>` : ''}
+      <td class="l exs">${exs.length ? exs.map(exShort).join(' · ') : ''}</td></tr>`; })}</tbody></table></div>
+  ${see ? html`<script>${raw(JT_JS)}</script>` : ''}` : empty('조건에 맞는 대학이 없어요', '군·지역·학과 조건을 바꿔 보세요.')}`, { active: '/admin/consulting', wide: true });
+}
+// 커트라인 칸을 누르면 그 자리에서 최초합·예비합 고치기
+const JT_JS = `(()=>{const W=document.querySelector('.jt-wrap');if(!W)return;
+const k='jt-scroll';try{const v=JSON.parse(sessionStorage.getItem(k)||'null');if(v&&v.p===location.pathname+location.search){scrollTo(0,v.y);W.scrollTop=v.t;W.scrollLeft=v.l}sessionStorage.removeItem(k)}catch(_){}
+let pop=null;const close=()=>{if(pop){pop.remove();pop=null}};
+W.addEventListener('click',e=>{const td=e.target.closest('td.cut');if(!td||e.target.closest('.cutpop'))return;close();
+ pop=document.createElement('form');pop.className='cutpop';pop.innerHTML='<b>'+td.dataset.y+'학년도 커트라인</b><label>최초합<input name="cutoff" type="number" step="any" inputmode="decimal"></label><label>예비합<input name="final" type="number" step="any" inputmode="decimal"></label><div class="flex"><button class="btn sm">저장</button><button type="button" class="btn sm ghost" data-x>닫기</button></div><p class="small muted mb0">최초합을 비우고 저장하면 지워져요.</p>';
+ pop.cutoff.value=td.dataset.c;pop.final.value=td.dataset.f;td.appendChild(pop);pop.cutoff.focus();pop.cutoff.select();
+ pop.querySelector('[data-x]').onclick=ev=>{ev.stopPropagation();close()};
+ pop.onsubmit=async ev=>{ev.preventDefault();const b=new URLSearchParams({_csrf:W.dataset.csrf,u:td.dataset.u,a:'정시',year:td.dataset.y,cutoff:pop.cutoff.value,final:pop.final.value});
+  pop.querySelector('button').disabled=true;try{const r=await fetch('/admin/predict',{method:'POST',body:b,credentials:'same-origin',headers:{'x-csrf':W.dataset.csrf}});if(!r.ok)throw 0;
+  sessionStorage.setItem(k,JSON.stringify({p:location.pathname+location.search,y:scrollY,t:W.scrollTop,l:W.scrollLeft}));location.reload()}catch(_){alert('저장하지 못했어요. 새로고침 후 다시 해 주세요.');pop.querySelector('button').disabled=false}}});
+document.addEventListener('keydown',e=>{if(e.key==='Escape')close()});})()`;
 
 // ---------- 학교 시트 ----------
 function scoreTable(u, ex, which = 'scoring') {

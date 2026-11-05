@@ -381,3 +381,35 @@ h2.sec{font-weight:700;font-size:17px;letter-spacing:-.3px}
 .expick-tabs button{font-weight:700}
 .uc-box>b,.st-v{font-weight:700;letter-spacing:-.5px}
 .kdate b{font-family:'Kaushan Script',cursive}
+
+/* 넓은 화면 (K:컨설팅 표) */
+.wrap.wide{max-width:1480px}
+/* K:컨설팅 정시 표 */
+.jpct{gap:5px}.jpct .pill{padding:6px 11px}
+.jfil{display:flex;flex-wrap:wrap;align-items:center;gap:8px 14px;margin:0 0 10px}
+.jfil .pill small{font-weight:700;opacity:.6;margin-left:2px}.jfil .pill.on small{opacity:.85}
+.jgrade{display:flex;align-items:center;gap:8px;background:#fff;border:1px solid #e1e3e8;border-radius:999px;padding:3px 12px 3px 14px}
+.jgrade b{font-size:13px}.jgrade select{width:auto;height:32px;padding:0 26px 0 10px;font-size:13px;border-radius:999px}
+.jt-wrap{position:relative;background:#fff;border-radius:14px;box-shadow:var(--sh);overflow:auto;max-height:calc(100vh - 120px);margin-bottom:14px}
+.jt{border-collapse:separate;border-spacing:0;width:100%;min-width:1180px;font-size:12.5px}
+.jt th{position:sticky;top:0;z-index:2;background:#16161a;color:#fff;font-weight:700;padding:8px 6px;text-align:center;white-space:nowrap;border-right:1px solid #2c2c33;height:34px}
+.jt thead tr.sub th{top:34px;background:#2a2a31;font-size:11.5px;font-weight:600;color:#e9e9ee;height:28px;padding:5px 6px;border-bottom:3px solid var(--red)}
+.jt thead tr:first-child th[rowspan]{border-bottom:3px solid var(--red)}
+.jt td{padding:9px 6px;text-align:center;border-bottom:1px solid #eef0f2;border-right:1px solid #f4f5f7;white-space:nowrap;vertical-align:middle}
+.jt .l{text-align:left}
+.jt tbody tr:hover td{background:#fff5f6}
+.jt td.gun{font-weight:800;font-size:13.5px;color:var(--red)}
+.jt td.reg{font-size:11.5px;color:var(--ink2)}.jt td.reg span{display:block;color:var(--mut);font-size:11px}
+.jt td.nm a{color:var(--ink);text-decoration:none}.jt td.nm a b{font-weight:800;color:var(--red-d)}.jt td.nm a:hover{text-decoration:underline}
+.jt .tag{display:inline-block;padding:0 5px;border-radius:4px;background:var(--red-l);color:var(--red-d);font-size:10.5px;font-weight:800;line-height:17px;vertical-align:1px}
+.jt td.tot{font-weight:800;font-size:13.5px}
+.jt .need{color:var(--amber);font-weight:700}
+.jt td.exs{font-size:11.5px;color:var(--ink2);white-space:normal;min-width:150px}
+.jt td.cut{cursor:pointer;position:relative}.jt td.cut:hover{background:#ffe9ec!important}
+.jt td.cut .pen{width:12px;height:12px;color:var(--mut);vertical-align:-1px}
+.cutpop{position:absolute;z-index:5;top:100%;left:50%;transform:translateX(-50%);width:210px;background:#fff;border:2px solid var(--red);border-radius:12px;box-shadow:var(--sh-r);padding:12px;text-align:left;white-space:normal;cursor:default}
+.cutpop b{display:block;font-size:13px;margin-bottom:6px}
+.cutpop label{display:flex;align-items:center;justify-content:space-between;gap:8px;font-size:12.5px;margin-bottom:6px}
+.cutpop input{width:110px;height:34px;padding:0 8px;font-size:13.5px;text-align:right}
+.cutpop .flex{gap:6px;margin:4px 0 6px}.cutpop .btn{flex:1;height:34px}
+.nowrap{white-space:nowrap}
