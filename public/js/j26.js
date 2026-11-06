@@ -174,12 +174,12 @@ export function start(root, init) {
     const tb = $('.j26t tbody', root);
     tb.innerHTML = rows.map(({ p, c }) => {
       const g = gunOf(p); const evn = (d.sheets[p.sheet]?.events || []).map(e => e.name); const ex = (evn.length ? evn : (p.events || [])).map(exShort);
-      const tr = `<tr data-id="${esc(p.id)}" class="${g ? 'g' + g : ''}${S.open === String(p.id) ? ' on' : ''}"><td class="gun">${g ? g + '군' : '—'}</td><td class="reg">${esc(String(p.region || '').split('\n')[0])}<span>${esc(String(p.region || '').split('\n')[1] || '')}</span></td>
-        <td class="l nm"><a href="#">${esc(p.name)} <b>${esc(p.dept)}</b></a>${p.cert === '교직' ? ' <span class="tag">교직</span>' : ''}${p.on_home ? '' : ' <span class="tag gray">요강</span>'}</td>
-        <td class="small">${esc(String(p.quota ?? '—')).replace(/\n/g, '<br>')}</td><td>${pct(p.r_sun)}</td><td>${pct(p.r_school)}</td><td>${pct(p.r_prac)}</td><td class="small">${dash(p.idx_ks)}</td>
-        <td><b>${f(c.G)}</b></td><td>${c.H ? f(c.H) : c.G != null ? (typeof p.r_school === 'number' && p.r_school > 0 ? '<span class="need">필요</span>' : 'X') : '—'}</td><td class="tot">${f(c.Z)}</td>
-        ${S.see ? `<td><b>${f(p.cut, 1)}</b></td><td>${f(p.cut_low, 1)}</td><td>${mgc(c.mg)}</td><td>${vchip(c.verdict)}</td><td class="gam">${gam(c.X, c.mg)}</td><td>${f(p.cut_busan, 1)}</td><td>${f(p.cut_assoc, 1)}</td><td>${f(p.cut_other, 1)}</td>` : ''}
-        <td class="exs">${exLines(ex.map(esc))}</td></tr>`;
+      const tr = `<tr data-id="${esc(p.id)}" class="${g ? 'g' + g : ''}${S.open === String(p.id) ? ' on' : ''}"><td class="gun" data-a="gun">${g ? g + '군' : '—'}</td><td class="reg" data-a="reg" data-l="지역">${esc(String(p.region || '').split('\n')[0])}<span>${esc(String(p.region || '').split('\n')[1] || '')}</span></td>
+        <td class="l nm" data-a="nm"><a href="#">${esc(p.name)} <b>${esc(p.dept)}</b></a>${p.cert === '교직' ? ' <span class="tag">교직</span>' : ''}${p.on_home ? '' : ' <span class="tag gray">요강</span>'}</td>
+        <td class="small" data-a="q" data-l="모집">${esc(String(p.quota ?? '—')).replace(/\n/g, '<br>')}</td><td data-a="rs" data-l="수능 %">${pct(p.r_sun)}</td><td data-a="rn" data-l="내신 %">${pct(p.r_school)}</td><td data-a="rp" data-l="실기 %">${pct(p.r_prac)}</td><td class="small" data-a="idx" data-l="지표">${dash(p.idx_ks)}</td>
+        <td data-a="cg" data-l="수능 환산"><b>${f(c.G)}</b></td><td data-a="ch" data-l="내신">${c.H ? f(c.H) : c.G != null ? (typeof p.r_school === 'number' && p.r_school > 0 ? '<span class="need">필요</span>' : 'X') : '—'}</td><td class="tot" data-a="tot" data-l="총점">${f(c.Z)}</td>
+        ${S.see ? `<td data-a="ct" data-l="커트 최종"><b>${f(p.cut, 1)}</b></td><td data-a="cl" data-l="커트 최저">${f(p.cut_low, 1)}</td><td data-a="mg" data-l="여유">${mgc(c.mg)}</td><td data-a="vd">${vchip(c.verdict)}</td><td class="gam" data-a="gam" data-l="여유감점">${gam(c.X, c.mg)}</td><td data-a="cb" data-l="26 부산">${f(p.cut_busan, 1)}</td><td data-a="ca" data-l="26 협회">${f(p.cut_assoc, 1)}</td><td data-a="co" data-l="26 타학원">${f(p.cut_other, 1)}</td>` : ''}
+        <td class="exs" data-a="exs">${exLines(ex.map(esc))}</td></tr>`;
       return S.open === String(p.id) ? tr + `<tr class="jx ${g ? 'g' + g : ''}"><td colspan="${S.see ? 20 : 12}"><div class="jx-in" data-detail></div></td></tr>` : tr;
     }).join('') || `<tr><td colspan="20" class="muted" style="padding:20px">조건에 맞는 학과가 없어요</td></tr>`;
     if (S.open) drawDetail();

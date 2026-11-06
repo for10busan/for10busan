@@ -486,3 +486,42 @@ tr.jx>td{padding:0!important;text-align:left!important;white-space:normal!import
 /* 실기 종목 가운데 정렬, 길면 두 줄 */
 .jt td.exs,.jt th.exs{text-align:center}
 .jt td.exs .exl{display:block;white-space:nowrap;line-height:1.5}
+/* ===== 휴대폰(폭 760px 이하): 컨설팅 표를 학교별 카드로 (PC 화면은 그대로) ===== */
+@media (max-width:760px){
+  .jt-wrap{overflow:visible;max-height:none;background:none;box-shadow:none;border-radius:0}
+  .card.scroll-x:has(>.tbl.st){background:none;box-shadow:none;padding:0!important;border:0;overflow:visible}
+  .jt,.tbl.st{display:block;width:100%;min-width:0!important}
+  .jt thead,.tbl.st tr.hd{display:none}
+  .jt>tbody,.tbl.st>tbody{display:block}
+  .jt>tbody>tr:not(.jx),.tbl.st>tbody>tr:not(.hd):not(.jx){display:grid;grid-template-columns:repeat(6,minmax(0,1fr));gap:9px 4px;padding:12px 12px 10px;margin:0 0 10px;border-radius:14px;background:#fff;box-shadow:0 1px 3px rgba(0,0,0,.08);border-left:5px solid #c9ccd2;cursor:pointer}
+  .jt>tbody>tr.g가{background:#fff0f1;border-left-color:#e11d2e}.jt>tbody>tr.g나{background:#ecfbf1;border-left-color:#16a34a}.jt>tbody>tr.g다{background:#eef4ff;border-left-color:#2563eb}
+  .jt>tbody>tr.on,.tbl.st>tbody>tr.on{box-shadow:0 0 0 2px var(--red);margin-bottom:0;border-radius:14px 14px 0 0}
+  .jt>tbody>tr:not(.jx)>td,.tbl.st>tbody>tr:not(.jx)>td{display:block;padding:0;border:0!important;background:transparent!important;box-shadow:none!important;text-align:center;white-space:normal;min-width:0;font-size:12.5px;line-height:1.3;overflow-wrap:anywhere}
+  .jt>tbody>tr>td[data-l]::before,.tbl.st>tbody>tr>td[data-l]::before{content:attr(data-l);display:block;font-size:10px;font-weight:600;color:var(--mut);margin-bottom:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .jt td[data-a=gun]{grid-area:gun;align-self:center;text-align:left!important;font-size:13px}
+  .jt td[data-a=nm],.tbl.st td[data-a=nm]{grid-area:nm;align-self:center;text-align:left!important;font-size:14.5px!important;line-height:1.35}
+  .jt td[data-a=nm] a b{display:inline}
+  td[data-a=vd]{grid-area:vd;align-self:center;text-align:right!important}
+  td[data-a=reg]{grid-area:reg}td[data-a=q]{grid-area:q}td[data-a=rs]{grid-area:rs}td[data-a=rn]{grid-area:rn}td[data-a=rp]{grid-area:rp}td[data-a=idx]{grid-area:idx}td[data-a=pm]{grid-area:pm}
+  td[data-a=cg]{grid-area:cg}td[data-a=ch]{grid-area:ch}td[data-a=tot]{grid-area:tot}td[data-a=ct]{grid-area:ct}td[data-a=cl]{grid-area:cl}td[data-a=mg]{grid-area:mg}td[data-a=gam]{grid-area:gam}
+  td[data-a=cb]{grid-area:cb}td[data-a=ca]{grid-area:ca}td[data-a=co]{grid-area:co}td[data-a=tr]{grid-area:tr}td[data-a=mn]{grid-area:mn}
+  .jt td[data-a=reg] span{display:inline;margin-left:2px}
+  .jt>tbody>tr>td[data-a=tot],.tbl.st>tbody>tr>td[data-a=tot]{font-size:14px!important;font-weight:800}
+  td[data-a=exs]{grid-area:exs;text-align:left!important;font-size:11.5px!important;color:var(--ink2);border-top:1px dashed rgba(0,0,0,.12)!important;padding-top:7px!important}
+  .jt td.exs .exl{display:inline;white-space:normal}.jt td.exs .exl+.exl::before{content:' · '}
+  .jt td.cut .pen{display:none}
+  /* 2026학년도 */
+  .j26t>tbody>tr:not(.jx){grid-template-areas:"gun nm nm nm nm vd" "reg q rs rn rp idx" "cg ch tot ct mg gam" "cl cb ca co . ." "exs exs exs exs exs exs"}
+  .j26t.nocut>tbody>tr:not(.jx){grid-template-areas:"gun nm nm nm nm nm" "reg q rs rn rp idx" "cg cg ch ch tot tot" "exs exs exs exs exs exs"}
+  /* 2027학년도 */
+  .jt:not(.j26t)>tbody>tr:not(.jx){grid-template-areas:"gun nm nm nm nm vd" "reg q rs rn rp pm" "cg cg ch tot ct cl" "mg mg mg gam gam gam" "exs exs exs exs exs exs"}
+  .jt.nocut:not(.j26t)>tbody>tr:not(.jx){grid-template-areas:"gun nm nm nm nm nm" "reg q rs rn rp pm" "cg cg cg ch tot tot" "exs exs exs exs exs exs"}
+  /* 수시 */
+  .tbl.st>tbody>tr:not(.hd):not(.jx){grid-template-areas:"nm nm nm nm nm vd" "reg tr tr q rs mn" "cg cg pm pm tot tot" "ct ct ct mg mg mg" "exs exs exs exs exs exs"}
+  .tbl.st.nocut>tbody>tr:not(.hd):not(.jx){grid-template-areas:"nm nm nm nm nm nm" "reg tr tr q rs mn" "cg cg pm pm tot tot" "exs exs exs exs exs exs"}
+  /* 펼친 학교 정보 */
+  .jt>tbody>tr.jx,.tbl.st>tbody>tr.jx{display:block;margin:0 0 14px}
+  .jt>tbody>tr.jx>td,.tbl.st>tbody>tr.jx>td{display:block;padding:0;border:0;background:none!important}
+  .jx-in{border-top:2px solid var(--red);border-radius:0 0 14px 14px;padding:12px 10px 14px}
+  .jx-hd select{min-width:0;width:100%}.jx-hd label{flex:1 1 100%}
+}

@@ -100,11 +100,11 @@ get('/admin/consulting', 'staff', ctx => {
   ${studentPicker(ctx, '/admin/consulting', keep, pick)}
   ${filterBar(ctx, '/admin/consulting', keep, f)}
   <p class="small muted"><b>${rows.length}</b>곳 · 줄을 누르면 바로 아래에 학생별 점수 계산이 열려요 · 총점 = ${m === '정시' ? '수능 환산' : '내신 점수'} + 실기 만점${see ? ', 여유 = 총점 − 커트라인(최초합 · 예비합), 감 = 여유 ÷ 실기 한 급간' : ''}</p>
-  ${rows.length ? html`<div class="card scroll-x" style="padding:8px"><table class="tbl" style="min-width:860px" data-jx="${JSON.stringify({ s: pick.s?.id || '', g: pick.g, t: pick.t, p: null })}"><tr><th>지역</th><th>대학 · 학과</th><th>전형</th><th>모집</th><th>비율</th><th>수능최저</th><th>${m === '정시' ? '수능' : '내신'}</th><th>실기 만점</th><th>총점</th>${see ? html`<th>커트라인<br>최초합/예비</th><th>여유<br>(점수·감)</th><th>판정</th>` : ''}<th>실기 종목</th></tr>
-    ${rows.map(({ u, c }) => html`<tr data-u="${u.id}" data-name="${u.name} ${u.dept || ''}" style="cursor:pointer"><td>${u.region || '—'}</td><td style="text-align:left"><a href="/admin/consulting/program/${u.id}${pick.s ? '?s=' + pick.s.id : ''}"><b>${u.name}</b></a><br><span class="small">${u.dept || ''}${u.teacher_cert ? ' · 교직' : ''}</span></td>
-      <td class="small">${[u.track && u.track_type && u.track.startsWith(u.track_type) ? null : u.track_type, u.track].filter(Boolean).join(" ") || '—'}</td><td>${u.quota ? u.quota + '명' : '—'}</td>
-      <td class="small">${m === '정시' ? (u.suneung_ratio ?? '—') : (u.school_ratio ?? '—')} · ${u.practical_ratio ?? '—'}</td><td class="small">${u.suneung_min || 'X'}</td>
-      <td>${f1(c.base)}</td><td>${f1(c.pmax)}</td><td><b>${f1(c.total)}</b></td>${see ? html`<td>${cutCell(ctx, c.cut)}</td><td>${marginCell(c.m1, c.g1)}</td><td>${verdictChip(c.verdict)}</td>` : ''}<td class="small" style="text-align:left">${exNames(u, ex) || '무실기'}</td></tr>`)}</table></div>
+  ${rows.length ? html`<div class="card scroll-x" style="padding:8px"><table class="tbl st${see ? '' : ' nocut'}" style="min-width:860px" data-jx="${JSON.stringify({ s: pick.s?.id || '', g: pick.g, t: pick.t, p: null })}"><tr class="hd"><th>지역</th><th>대학 · 학과</th><th>전형</th><th>모집</th><th>비율</th><th>수능최저</th><th>${m === '정시' ? '수능' : '내신'}</th><th>실기 만점</th><th>총점</th>${see ? html`<th>커트라인<br>최초합/예비</th><th>여유<br>(점수·감)</th><th>판정</th>` : ''}<th>실기 종목</th></tr>
+    ${rows.map(({ u, c }) => html`<tr data-u="${u.id}" data-name="${u.name} ${u.dept || ''}" style="cursor:pointer"><td data-a="reg" data-l="지역">${u.region || '—'}</td><td data-a="nm" style="text-align:left"><a href="/admin/consulting/program/${u.id}${pick.s ? '?s=' + pick.s.id : ''}"><b>${u.name}</b></a><br><span class="small">${u.dept || ''}${u.teacher_cert ? ' · 교직' : ''}</span></td>
+      <td class="small" data-a="tr" data-l="전형">${[u.track && u.track_type && u.track.startsWith(u.track_type) ? null : u.track_type, u.track].filter(Boolean).join(" ") || '—'}</td><td data-a="q" data-l="모집">${u.quota ? u.quota + '명' : '—'}</td>
+      <td class="small" data-a="rs" data-l="비율">${m === '정시' ? (u.suneung_ratio ?? '—') : (u.school_ratio ?? '—')} · ${u.practical_ratio ?? '—'}</td><td class="small" data-a="mn" data-l="수능최저">${u.suneung_min || 'X'}</td>
+      <td data-a="cg" data-l="${m === '정시' ? '수능' : '내신'}">${f1(c.base)}</td><td data-a="pm" data-l="실기 만점">${f1(c.pmax)}</td><td data-a="tot" data-l="총점"><b>${f1(c.total)}</b></td>${see ? html`<td data-a="ct" data-l="커트라인">${cutCell(ctx, c.cut)}</td><td data-a="mg" data-l="여유">${marginCell(c.m1, c.g1)}</td><td data-a="vd">${verdictChip(c.verdict)}</td>` : ''}<td class="small" data-a="exs" style="text-align:left">${exNames(u, ex) || '무실기'}</td></tr>`)}</table></div>
     ${studOptions(ctx, pick)}<script>${raw(UC_JS)}</script><script>${raw(JX_JS)}</script>`
     : empty('조건에 맞는 대학이 없어요', '대학 관리에서 전형 정보를 넣거나, 엑셀에서 한 번에 붙여 넣을 수 있어요.')}`, { active: '/admin/consulting', wide: true });
 });
@@ -207,16 +207,16 @@ function jungsiPage(ctx, pick, ex) {
       <tr class="sub"><th>수능</th><th>내신</th><th>실기</th>${see ? html`<th>최초합</th><th>예비합</th><th>최초합</th><th>예비합</th>` : ''}</tr></thead>
     <tbody>${rows.map(({ u, c }) => { const href = `/admin/consulting/program/${u.id}${pick.s ? '?s=' + pick.s.id : ''}`; const exs = J(u.exercises, []).map(i => ex[i]?.name).filter(Boolean);
       const gn = gunOf(u);
-      return html`<tr id="u${u.id}" class="${gn ? 'g' + gn : ''}" data-u="${u.id}" data-name="${u.name} ${u.dept || ''}"><td class="gun">${gn ? gn + '군' : '—'}</td><td class="reg">${regionGroup(u.region)}<span>${u.city || u.region || ''}</span></td>
-      <td class="l nm"><a href="${href}">${u.name} <b>${u.dept || ''}</b></a>${u.teacher_cert ? html` <span class="tag">교직</span>` : ''}</td><td>${quotaText(u)}</td>
-      <td>${nz(u.suneung_ratio)}</td><td>${nz(u.school_ratio)}</td><td>${nz(u.practical_ratio)}</td>
-      <td class="nowrap">${c.base != null ? html`<b>${fmtNum(c.base, 2)}</b>` : '—'}<span class="muted" title="${c.smaxEst ? '수능 만점이 입력되지 않아 실기 만점과 반영비율로 추정한 값' : ''}">/${c.smax ? (c.smaxEst ? '≈' : '') + fmtNum(c.smax, 2) : '—'}</span></td>
-      <td>${u.school_ratio > 0 ? (c.school != null ? fmtNum(c.school, 2) : html`<span class="need">필요</span>`) : 'X'}</td>
-      <td class="nowrap">${c.pmax != null ? html`${fmtNum(c.pmax, 2)}${c.step ? html`<span class="muted">/${fmtNum(c.step, 2)}</span>` : ''}` : 'X'}</td>
-      <td class="tot">${c.base != null ? fmtNum(c.total, 2) : '—'}</td>
-      ${see ? html`<td class="cut" data-u="${u.id}" data-y="${c.cut?.year || y}" data-c="${c.cut?.cutoff ?? ''}" data-f="${c.cut?.final ?? ''}" title="눌러서 고치기"><b>${c.cut ? fmtNum(c.cut.cutoff, 2) : '—'}</b> ${icon('pen', 'pen')}</td><td class="cut" data-u="${u.id}" data-y="${c.cut?.year || y}" data-c="${c.cut?.cutoff ?? ''}" data-f="${c.cut?.final ?? ''}" title="눌러서 고치기">${c.cut?.final != null ? fmtNum(c.cut.final, 2) : '—'}</td>
-        <td class="nowrap">${mg(c.m1, c.g1)}</td><td class="nowrap">${mg(c.m2, c.g2)}</td><td>${verdictChip(c.verdict)}</td>` : ''}
-      <td class="exs">${exs.length ? exLines(exs.map(exShort)) : ''}</td></tr>`; })}</tbody></table></div>
+      return html`<tr id="u${u.id}" class="${gn ? 'g' + gn : ''}" data-u="${u.id}" data-name="${u.name} ${u.dept || ''}"><td class="gun" data-a="gun">${gn ? gn + '군' : '—'}</td><td class="reg" data-a="reg" data-l="지역">${regionGroup(u.region)}<span>${u.city || u.region || ''}</span></td>
+      <td class="l nm" data-a="nm"><a href="${href}">${u.name} <b>${u.dept || ''}</b></a>${u.teacher_cert ? html` <span class="tag">교직</span>` : ''}</td><td data-a="q" data-l="모집">${quotaText(u)}</td>
+      <td data-a="rs" data-l="수능 %">${nz(u.suneung_ratio)}</td><td data-a="rn" data-l="내신 %">${nz(u.school_ratio)}</td><td data-a="rp" data-l="실기 %">${nz(u.practical_ratio)}</td>
+      <td class="nowrap" data-a="cg" data-l="수능 환산">${c.base != null ? html`<b>${fmtNum(c.base, 2)}</b>` : '—'}<span class="muted" title="${c.smaxEst ? '수능 만점이 입력되지 않아 실기 만점과 반영비율로 추정한 값' : ''}">/${c.smax ? (c.smaxEst ? '≈' : '') + fmtNum(c.smax, 2) : '—'}</span></td>
+      <td data-a="ch" data-l="내신">${u.school_ratio > 0 ? (c.school != null ? fmtNum(c.school, 2) : html`<span class="need">필요</span>`) : 'X'}</td>
+      <td class="nowrap" data-a="pm" data-l="실기 만점">${c.pmax != null ? html`${fmtNum(c.pmax, 2)}${c.step ? html`<span class="muted">/${fmtNum(c.step, 2)}</span>` : ''}` : 'X'}</td>
+      <td class="tot" data-a="tot" data-l="총점">${c.base != null ? fmtNum(c.total, 2) : '—'}</td>
+      ${see ? html`<td class="cut" data-a="ct" data-l="커트 최초" data-u="${u.id}" data-y="${c.cut?.year || y}" data-c="${c.cut?.cutoff ?? ''}" data-f="${c.cut?.final ?? ''}" title="눌러서 고치기"><b>${c.cut ? fmtNum(c.cut.cutoff, 2) : '—'}</b> ${icon('pen', 'pen')}</td><td class="cut" data-a="cl" data-l="커트 예비" data-u="${u.id}" data-y="${c.cut?.year || y}" data-c="${c.cut?.cutoff ?? ''}" data-f="${c.cut?.final ?? ''}" title="눌러서 고치기">${c.cut?.final != null ? fmtNum(c.cut.final, 2) : '—'}</td>
+        <td class="nowrap" data-a="mg" data-l="여유 (최초합)">${mg(c.m1, c.g1)}</td><td class="nowrap" data-a="gam" data-l="여유 (예비합)">${mg(c.m2, c.g2)}</td><td data-a="vd">${verdictChip(c.verdict)}</td>` : ''}
+      <td class="exs" data-a="exs">${exs.length ? exLines(exs.map(exShort)) : ''}</td></tr>`; })}</tbody></table></div>
   ${studOptions(ctx, pick)}<script>${raw(UC_JS)}</script><script>${raw(JX_JS)}</script>${see ? html`<script>${raw(JT_JS)}</script>` : ''}` : empty('조건에 맞는 대학이 없어요', '군·지역·학과 조건을 바꿔 보세요.')}`, { active: '/admin/consulting', wide: true });
 }
 // 커트라인 칸을 누르면 그 자리에서 최초합·예비합 고치기
