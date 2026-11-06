@@ -7,6 +7,8 @@ import { branches } from '../lib/services.js';
 import { j26Data, j26Score } from './j26.js';
 import { ASSET_V } from '../lib/html.js';
 import { REGION_GROUPS, regionGroup, uniLabel, schoolScore, practicalScore, maxPoints, practicalMax, stepPoints, latestCutoff, programRow, suneungMax, EXAMS, EXAM_SUBJECTS, SUBJECT_MAX, convertRaw, coverage, rangeText, examTable } from '../lib/admissions.js';
+// 실기 종목: 길면 글자 수가 비슷하게 두 줄로 나눔
+const exLines = (a) => { const t = a.join(' · '); if (a.length < 2 || t.length <= 18) return t; let k = 1, best = 1e9; for (let i = 1; i < a.length; i++) { const d = Math.abs(a.slice(0, i).join(' · ').length - a.slice(i).join(' · ').length); if (d < best) { best = d; k = i; } } return html`<span class="exl">${a.slice(0, k).join(' · ')}</span><span class="exl">${a.slice(k).join(' · ')}</span>`; };
 
 const exMap = () => Object.fromEntries(all('SELECT id,name,unit,higher_better FROM exercises').map(e => [e.id, e]));
 const curYear = () => Number(today().slice(0, 4)) + (Number(today().slice(5, 7)) >= 3 ? 1 : 0); // 입시 학년도
@@ -201,7 +203,7 @@ function jungsiPage(ctx, pick, ex) {
   <p class="small muted mt8">${rows.length}곳 · 줄을 누르면 바로 아래에 학생별 수능 환산·실기 기록 입력이 열려요 · 총점 = 수능 환산 + 내신 + 실기 만점${see ? ', 여유 = 총점 − 예상 커트라인(최초합 · 예비합) · 커트라인 칸을 누르면 최초합·예비합을 바로 고칠 수 있어요' : ''}</p>
   ${rows.length ? html`<div class="jt-wrap" data-csrf="${ctx.csrf}" data-year="${y}"><table class="jt${see ? '' : ' nocut'}" data-jx="${JSON.stringify({ s: pick.s?.id || '', g: pick.g, t: pick.t, p: pick.p })}">
     <thead><tr><th rowspan="2">군</th><th rowspan="2">지역</th><th rowspan="2" class="l">대학 · 학과</th><th rowspan="2">모집</th><th colspan="3">비율</th><th rowspan="2">수능 환산</th><th rowspan="2">내신</th><th rowspan="2">실기 만점</th><th rowspan="2">총점</th>
-      ${see ? html`<th colspan="2">커트라인</th><th colspan="2">여유 (점수 · 감)</th><th rowspan="2">판정</th>` : ''}<th rowspan="2" class="l">실기 종목</th></tr>
+      ${see ? html`<th colspan="2">커트라인</th><th colspan="2">여유 (점수 · 감)</th><th rowspan="2">판정</th>` : ''}<th rowspan="2">실기 종목</th></tr>
       <tr class="sub"><th>수능</th><th>내신</th><th>실기</th>${see ? html`<th>최초합</th><th>예비합</th><th>최초합</th><th>예비합</th>` : ''}</tr></thead>
     <tbody>${rows.map(({ u, c }) => { const href = `/admin/consulting/program/${u.id}${pick.s ? '?s=' + pick.s.id : ''}`; const exs = J(u.exercises, []).map(i => ex[i]?.name).filter(Boolean);
       const gn = gunOf(u);
@@ -214,7 +216,7 @@ function jungsiPage(ctx, pick, ex) {
       <td class="tot">${c.base != null ? fmtNum(c.total, 2) : '—'}</td>
       ${see ? html`<td class="cut" data-u="${u.id}" data-y="${c.cut?.year || y}" data-c="${c.cut?.cutoff ?? ''}" data-f="${c.cut?.final ?? ''}" title="눌러서 고치기"><b>${c.cut ? fmtNum(c.cut.cutoff, 2) : '—'}</b> ${icon('pen', 'pen')}</td><td class="cut" data-u="${u.id}" data-y="${c.cut?.year || y}" data-c="${c.cut?.cutoff ?? ''}" data-f="${c.cut?.final ?? ''}" title="눌러서 고치기">${c.cut?.final != null ? fmtNum(c.cut.final, 2) : '—'}</td>
         <td class="nowrap">${mg(c.m1, c.g1)}</td><td class="nowrap">${mg(c.m2, c.g2)}</td><td>${verdictChip(c.verdict)}</td>` : ''}
-      <td class="l exs">${exs.length ? exs.map(exShort).join(' · ') : ''}</td></tr>`; })}</tbody></table></div>
+      <td class="exs">${exs.length ? exLines(exs.map(exShort)) : ''}</td></tr>`; })}</tbody></table></div>
   ${studOptions(ctx, pick)}<script>${raw(UC_JS)}</script><script>${raw(JX_JS)}</script>${see ? html`<script>${raw(JT_JS)}</script>` : ''}` : empty('조건에 맞는 대학이 없어요', '군·지역·학과 조건을 바꿔 보세요.')}`, { active: '/admin/consulting', wide: true });
 }
 // 커트라인 칸을 누르면 그 자리에서 최초합·예비합 고치기

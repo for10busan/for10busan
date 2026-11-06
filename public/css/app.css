@@ -483,3 +483,6 @@ tr.jx>td{padding:0!important;text-align:left!important;white-space:normal!import
 .jt tr.jx .j26-tbl tr td[data-c="p"],.jt tr.jx .j26-tbl tr.sub td:nth-child(3n+1){border-left:2px solid #b4313f}
 .jt tr.jx .j26-tbl th{border-left:2px solid #fff;border-right:0}
 .jt tr.jx .j26-tbl tr td.hit{background:#16a34a;color:#fff;font-weight:800}
+/* 실기 종목 가운데 정렬, 길면 두 줄 */
+.jt td.exs,.jt th.exs{text-align:center}
+.jt td.exs .exl{display:block;white-space:nowrap;line-height:1.5}

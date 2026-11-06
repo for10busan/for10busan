@@ -3,6 +3,8 @@ import { makeBook, isError } from './xl.js';
 
 const $ = (s, el = document) => el.querySelector(s);
 const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]);
+// 실기 종목: 길면 글자 수가 비슷하게 두 줄로 나눔
+const exLines = (a) => { const t = a.join(' · '); if (a.length < 2 || t.length <= 18) return t; let k = 1, best = 1e9; for (let i = 1; i < a.length; i++) { const d = Math.abs(a.slice(0, i).join(' · ').length - a.slice(i).join(' · ').length); if (d < best) { best = d; k = i; } } return `<span class="exl">${a.slice(0, k).join(' · ')}</span><span class="exl">${a.slice(k).join(' · ')}</span>`; };
 const n = v => (typeof v === 'number' && Number.isFinite(v) ? v : null);
 const f = (v, d = 2) => { const x = n(v); if (x == null) return '—'; return String(Math.round(x * 10 ** d) / 10 ** d); };
 const dash = v => (v == null || v === '' || v === 'ㅡ' ? '—' : esc(v));
@@ -81,7 +83,7 @@ export function start(root, init) {
       <select data-sort style="width:auto;height:38px"><option value="">기본 순서 (군 → 엑셀 순)</option>${S.see ? '<option value="m">여유 많은 순</option>' : ''}<option value="g">수능 환산 높은 순</option></select></div>
     <p class="small muted mt8" data-count></p>
     <div class="jt-wrap"><table class="jt j26t${S.see ? '' : ' nocut'}"><thead><tr><th rowspan="2">군</th><th rowspan="2">지역</th><th rowspan="2" class="l">대학 · 학과</th><th rowspan="2">모집</th><th colspan="3">비율</th><th rowspan="2">지표</th><th rowspan="2">수능 환산</th><th rowspan="2">내신</th><th rowspan="2">실기만점<br>총점</th>
-      ${S.see ? '<th colspan="2">커트라인</th><th rowspan="2">여유<br><small>점수</small></th><th rowspan="2">판정</th><th rowspan="2">여유감점<br><small>실기 몇 감</small></th><th colspan="3">2026 커트라인</th>' : ''}<th rowspan="2" class="l">실기 종목</th></tr>
+      ${S.see ? '<th colspan="2">커트라인</th><th rowspan="2">여유<br><small>점수</small></th><th rowspan="2">판정</th><th rowspan="2">여유감점<br><small>실기 몇 감</small></th><th colspan="3">2026 커트라인</th>' : ''}<th rowspan="2">실기 종목</th></tr>
       <tr class="sub"><th>수능</th><th>내신</th><th>실기</th>${S.see ? '<th>최종</th><th>최저</th><th>부산</th><th>협회</th><th>타학원</th>' : ''}</tr></thead><tbody></tbody></table></div>`;
     // 값 채우기
     root.querySelectorAll('[data-k]').forEach(el => { const v = S.inp[el.dataset.k]; if (v != null) el.value = v; });
@@ -177,7 +179,7 @@ export function start(root, init) {
         <td class="small">${esc(String(p.quota ?? '—')).replace(/\n/g, '<br>')}</td><td>${pct(p.r_sun)}</td><td>${pct(p.r_school)}</td><td>${pct(p.r_prac)}</td><td class="small">${dash(p.idx_ks)}</td>
         <td><b>${f(c.G)}</b></td><td>${c.H ? f(c.H) : c.G != null ? (typeof p.r_school === 'number' && p.r_school > 0 ? '<span class="need">필요</span>' : 'X') : '—'}</td><td class="tot">${f(c.Z)}</td>
         ${S.see ? `<td><b>${f(p.cut, 1)}</b></td><td>${f(p.cut_low, 1)}</td><td>${mgc(c.mg)}</td><td>${vchip(c.verdict)}</td><td class="gam">${gam(c.X, c.mg)}</td><td>${f(p.cut_busan, 1)}</td><td>${f(p.cut_assoc, 1)}</td><td>${f(p.cut_other, 1)}</td>` : ''}
-        <td class="l exs">${esc(ex.join(' · '))}</td></tr>`;
+        <td class="exs">${exLines(ex.map(esc))}</td></tr>`;
       return S.open === String(p.id) ? tr + `<tr class="jx ${g ? 'g' + g : ''}"><td colspan="${S.see ? 20 : 12}"><div class="jx-in" data-detail></div></td></tr>` : tr;
     }).join('') || `<tr><td colspan="20" class="muted" style="padding:20px">조건에 맞는 학과가 없어요</td></tr>`;
     if (S.open) drawDetail();
