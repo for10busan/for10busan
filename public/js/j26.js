@@ -166,7 +166,7 @@ export function start(root, init) {
     if (F.sort === 'g') rows.sort((a, b) => (n(b.c.G) ?? -1e9) - (n(a.c.G) ?? -1e9));
     $('[data-count]', root).textContent = `${rows.length}곳 · 줄을 누르면 바로 아래에 실기 기록 입력과 학교 정보가 열려요 · 실기만점 총점 = 수능 환산 + 내신 + 실기 만점${S.see ? ', 여유 = 실기만점 총점 − 커트라인(최종), 여유감점 = 그 여유를 실기 배점표 한 칸 점수로 나눈 값(실기에서 몇 감까지 괜찮은지)' : ''}`;
     // 여유감점: 엑셀 여유감점 칸 = (실기만점 총점 − 최종 커트) ÷ 실기 배점표 한 칸 점수 → 실기에서 몇 감까지 여유가 있는지
-    const gam = v => (n(v) == null ? '—' : `<b class="${v >= 0 ? 'green' : 'red'}">${v >= 0 ? '+' : ''}${f(v, 1)}감</b>`);
+    const gam = (v, m) => (n(v) == null ? '—' : `<b class="${(m ?? v) >= 0 ? 'green' : 'red'}">${v >= 0 ? '+' : ''}${f(v, 1)}감</b>`); // 색은 여유 점수와 같게
     const vchip = v => (v ? `<span class="chip ${v[1]}">${v[0]}</span>` : '—');
     const mgc = v => (v == null ? '—' : `<b class="${v >= 0 ? 'green' : 'red'}">${v >= 0 ? '+' : ''}${f(v, 2)}</b>`);
     const tb = $('.j26t tbody', root);
@@ -176,7 +176,7 @@ export function start(root, init) {
         <td class="l nm"><a href="#">${esc(p.name)} <b>${esc(p.dept)}</b></a>${p.cert === '교직' ? ' <span class="tag">교직</span>' : ''}${p.on_home ? '' : ' <span class="tag gray">요강</span>'}</td>
         <td class="small">${esc(String(p.quota ?? '—')).replace(/\n/g, '<br>')}</td><td>${pct(p.r_sun)}</td><td>${pct(p.r_school)}</td><td>${pct(p.r_prac)}</td><td class="small">${dash(p.idx_ks)}</td>
         <td><b>${f(c.G)}</b></td><td>${c.H ? f(c.H) : c.G != null ? (typeof p.r_school === 'number' && p.r_school > 0 ? '<span class="need">필요</span>' : 'X') : '—'}</td><td class="tot">${f(c.Z)}</td>
-        ${S.see ? `<td><b>${f(p.cut, 1)}</b></td><td>${f(p.cut_low, 1)}</td><td>${mgc(c.mg)}</td><td>${vchip(c.verdict)}</td><td class="gam">${gam(c.X)}</td><td>${f(p.cut_busan, 1)}</td><td>${f(p.cut_assoc, 1)}</td><td>${f(p.cut_other, 1)}</td>` : ''}
+        ${S.see ? `<td><b>${f(p.cut, 1)}</b></td><td>${f(p.cut_low, 1)}</td><td>${mgc(c.mg)}</td><td>${vchip(c.verdict)}</td><td class="gam">${gam(c.X, c.mg)}</td><td>${f(p.cut_busan, 1)}</td><td>${f(p.cut_assoc, 1)}</td><td>${f(p.cut_other, 1)}</td>` : ''}
         <td class="l exs">${esc(ex.join(' · '))}</td></tr>`;
       return S.open === String(p.id) ? tr + `<tr class="jx ${g ? 'g' + g : ''}"><td colspan="${S.see ? 20 : 12}"><div class="jx-in" data-detail></div></td></tr>` : tr;
     }).join('') || `<tr><td colspan="20" class="muted" style="padding:20px">조건에 맞는 학과가 없어요</td></tr>`;
