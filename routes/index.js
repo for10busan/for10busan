@@ -9,3 +9,4 @@ import './exercises.js';
 import './admissions.js';
 import './community.js';
 import './consulting.js';
+import './j26.js';

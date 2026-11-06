@@ -4,6 +4,8 @@ import { one, all, run, tx, J } from '../lib/db.js';
 import { html, raw, icon, pageTitle, empty, csrfField, pills, chip } from '../lib/html.js';
 import { num, fmtNum, today, korDay, canSeeCutoff, GRADES, isStaff } from '../lib/util.js';
 import { branches } from '../lib/services.js';
+import { j26Data, j26Score } from './j26.js';
+import { ASSET_V } from '../lib/html.js';
 import { REGION_GROUPS, regionGroup, uniLabel, schoolScore, practicalScore, maxPoints, practicalMax, stepPoints, latestCutoff, programRow, suneungMax, EXAMS, EXAM_SUBJECTS, SUBJECT_MAX, convertRaw, coverage, rangeText, examTable } from '../lib/admissions.js';
 
 const exMap = () => Object.fromEntries(all('SELECT id,name,unit,higher_better FROM exercises').map(e => [e.id, e]));
@@ -34,7 +36,7 @@ function studentPicker(ctx, base, keep, pick, mode = '') {
       <input type="search" placeholder="이름을 입력하면 바로 찾아요" data-filter-select="#pickSel" class="mb8">
       <select name="s" id="pickSel" onchange="this.form.submit()"><option value="">학생을 고르면 그 학생 성적이 자동으로 들어가요</option>${studs.map(x => html`<option value="${x.id}" ${pick.s?.id === x.id ? 'selected' : ''}>${x.name} (${x.grade || ''})</option>`)}</select></form>
   </div>
-  ${mode === 'jungsi' ? html`<div class="card"><div class="pills mb0 jpct"><span class="small b" style="align-self:center;margin-right:2px">표본</span>${PCTS.map(v => html`<a class="pill ${pick.p === v ? 'on' : ''}" href="${qs(base, { ...keep, b, s: '', p: v })}">백${v}</a>`)}</div>
+  ${mode === 'j26' ? '' : mode === 'jungsi' ? html`<div class="card"><div class="pills mb0 jpct"><span class="small b" style="align-self:center;margin-right:2px">표본</span>${PCTS.map(v => html`<a class="pill ${pick.p === v ? 'on' : ''}" href="${qs(base, { ...keep, b, s: '', p: v })}">백${v}</a>`)}</div>
     <p class="help mb0">${pick.s ? html`<b>${pick.s.name}</b> · 최근 모의고사 국·수·탐 백분위로 수능 환산${pick.p != null ? ` → 표본 백분위 ${pick.p}로 보는 중` : ''}` : pick.p != null ? `표본 백분위 ${pick.p}(국·수·탐 평균)로 수능 환산 점수를 계산하고 있어요.` : '학생 이름을 입력하거나 백분위 표본을 누르면 대학마다 여유·적정·도전이 바로 나와요.'}</p></div>` : html`  <div class="card"><div class="flex between wrapf"><b class="small">내신 등급제</b>
     <div class="pills mb0">${[[9, '9등급제 (2027학년도)'], [5, '5등급제 (2028학년도)']].map(([v, l]) => html`<a class="pill ${pick.g === v ? 'on' : ''}" href="${qs(base, { ...keep, b, s: pick.s?.id, t: pick.t, g: v })}">${l}</a>`)}</div></div>
     <div class="pills mt8 mb0"><span class="small muted" style="align-self:center">표본</span>${SAMPLE.map(v => html`<a class="pill ${pick.t === v ? 'on' : ''}" href="${qs(base, { ...keep, b, g: pick.g, t: v })}">${v}등급</a>`)}</div>
@@ -82,6 +84,7 @@ get('/admin/consulting', 'staff', ctx => {
   const m = ctx.query.m === 'jungsi' ? '정시' : '수시';
   const pick = readPick(ctx); const ex = exMap();
   if (m === '정시') return jungsiPage(ctx, pick, ex);
+  if (ctx.query.m === 'j26') return j26Page(ctx, pick);
   const keep = { m: ctx.query.m, np: ctx.query.np, b: ctx.query.b, s: pick.s?.id, t: pick.t, g: ctx.query.g, r: ctx.query.r, d: ctx.query.d, q: ctx.query.q, sort: ctx.query.sort || '' };
   const f = filterUnis(ctx, m);
   let rows = f.rows.map(u => ({ u, c: programRow(u, { grade: pick.grade, system: pick.g, studentId: pick.s?.id }) }));
@@ -90,7 +93,7 @@ get('/admin/consulting', 'staff', ctx => {
   ctx.page('K:컨설팅', html`
   <div class="hero" style="padding-bottom:16px"><small>Korea Sports Consulting</small><b>K:컨설팅 프로그램</b><div class="small muted">수시·정시 지원 예상</div>
     <div class="flex mt12" style="position:relative;z-index:1"><a class="btn sm dark" style="border:1px solid #444" href="/admin/consulting/results">${icon('doc')}K:결과분석표</a><a class="btn sm" href="/admin/consulting/students">${icon('users')}학생관리</a></div></div>
-  <div class="seg mt12"><a class="${m === '수시' ? 'on' : ''}" href="${qs('/admin/consulting', { ...keep, m: '' })}">수시</a><a class="${m === '정시' ? 'on' : ''}" href="${qs('/admin/consulting', { ...keep, m: 'jungsi' })}">정시</a></div>
+  ${modeSeg(ctx, 'susi')}
   <div class="seg">${[['0', '실기 대학'], ['1', '무실기 대학']].map(([v, l]) => html`<a class="${(ctx.query.np || '0') === v ? 'on' : ''}" href="${qs('/admin/consulting', { ...keep, np: v })}">${l}</a>`)}</div>
   ${studentPicker(ctx, '/admin/consulting', keep, pick)}
   ${filterBar(ctx, '/admin/consulting', keep, f)}
@@ -124,6 +127,32 @@ T.addEventListener('click',e=>{if(e.target.closest('.jx')||e.target.closest('td.
  sel.onchange=()=>load(td,tr.dataset.u,sel.value);td.querySelector('.jx-x').onclick=()=>{x.remove();tr.classList.remove('on')};
  load(td,tr.dataset.u,sel.value);const top=tr.getBoundingClientRect().top;if(top>innerHeight*.6||top<0)tr.scrollIntoView({block:'start',behavior:'smooth'})});})()`;
 
+// K:컨설팅 위쪽: 수시 · 정시 · 2026 정시
+function modeSeg(ctx, cur) {
+  const b = ctx.query.b, s = ctx.query.s;
+  const href = m => qs('/admin/consulting', { m, b, s });
+  return html`<div class="seg mt12">${[['susi', '', '수시'], ['jungsi', 'jungsi', '정시 (2027)'], ['j26', 'j26', '2026 정시']].map(([k, m, l]) => html`<a class="${cur === k ? 'on' : ''}" href="${href(m)}">${l}</a>`)}</div>`;
+}
+const K_HERO = html`<div class="hero" style="padding-bottom:16px"><small>Korea Sports Consulting</small><b>K:컨설팅 프로그램</b><div class="small muted">수시·정시 지원 예상</div>
+    <div class="flex mt12" style="position:relative;z-index:1"><a class="btn sm dark" style="border:1px solid #444" href="/admin/consulting/results">${icon('doc')}K:결과분석표</a><a class="btn sm" href="/admin/consulting/students">${icon('users')}학생관리</a></div></div>`;
+// ---------- K:컨설팅 2026 정시 (엑셀 상담 프로그램 그대로 계산) ----------
+function j26Page(ctx, pick) {
+  const see = canSeeCutoff(ctx.user); const has = !!j26Data();
+  const keep = { m: 'j26', b: ctx.query.b, s: pick.s?.id };
+  const init = { see, csrf: ctx.csrf, s: pick.s?.id || null, sname: pick.s?.name || '', gender: pick.s?.gender || null, saved: pick.s ? j26Score(pick.s.id) : null };
+  const upload = see ? html`<details class="card"${has ? '' : ' open'}><summary>${has ? '2026 정시 계산 자료 다시 올리기' : '2026 정시 계산 자료 올리기'}</summary>
+    <p class="small muted">엑셀에서 만든 계산 자료(j26.json)를 고르면 서버에만 저장돼요. GitHub에는 올라가지 않아요.</p>
+    <input type="file" accept=".json,application/json" id="j26file"><p class="small mt8 mb0" id="j26msg"></p>
+    <script>document.getElementById('j26file').addEventListener('change',async e=>{const m=document.getElementById('j26msg');const fl=e.target.files[0];if(!fl)return;m.textContent='올리는 중…';
+      try{const data=JSON.parse(await fl.text());const r=await fetch('/admin/j26/data',{method:'POST',credentials:'same-origin',headers:{'Content-Type':'application/json','x-csrf':${raw(JSON.stringify(ctx.csrf))}},body:JSON.stringify({data})});const j=await r.json();if(!r.ok)throw new Error(j.error||r.status);m.textContent=j.programs+'개 학과를 올렸어요. 새로고침할게요.';setTimeout(()=>location.reload(),800)}catch(err){m.textContent='올리지 못했어요: '+err.message}});</script></details>` : '';
+  ctx.page('K:컨설팅 2026 정시', html`${K_HERO}${modeSeg(ctx, 'j26')}
+  ${studentPicker(ctx, '/admin/consulting', keep, pick, 'j26')}
+  ${has ? html`<div id="j26root"></div>
+    <script type="module">import { start } from '/js/j26.js?v=${ASSET_V}'; start(document.getElementById('j26root'), ${raw(JSON.stringify(init).replace(/</g, '\\u003c'))});</script>`
+    : empty('2026 정시 계산 자료가 아직 없어요', see ? '아래에서 j26.json 파일을 올려 주세요.' : '원장·부원장님이 자료를 올리면 쓸 수 있어요.')}
+  ${upload}`, { active: '/admin/consulting', wide: true });
+}
+
 // ---------- K:컨설팅 정시: 군별 한눈에 보는 표 ----------
 const GUN_ORDER = ['가', '나', '다'];
 const gunOf = u => (String(u.track_type || '').match(/([가나다])\s*군/) || String(u.track || '').match(/([가나다])\s*군/) || [])[1] || '';
@@ -151,7 +180,7 @@ function jungsiPage(ctx, pick, ex) {
   ctx.page('K:컨설팅 정시', html`
   <div class="hero" style="padding-bottom:16px"><small>Korea Sports Consulting</small><b>K:컨설팅 프로그램</b><div class="small muted">수시·정시 지원 예상</div>
     <div class="flex mt12" style="position:relative;z-index:1"><a class="btn sm dark" style="border:1px solid #444" href="/admin/consulting/results">${icon('doc')}K:결과분석표</a><a class="btn sm" href="/admin/consulting/students">${icon('users')}학생관리</a></div></div>
-  <div class="seg mt12"><a href="${qs(base, { ...keep, m: '', p: '', gun: '' })}">수시</a><a class="on" href="${qs(base, keep)}">정시</a></div>
+  ${modeSeg(ctx, 'jungsi')}
   <div class="seg">${[['0', '실기 대학'], ['1', '무실기 대학']].map(([v, l]) => html`<a class="${(ctx.query.np || '0') === v ? 'on' : ''}" href="${qs(base, { ...keep, np: v })}">${l}</a>`)}</div>
   ${studentPicker(ctx, base, keep, pick, 'jungsi')}
   <form method="get" action="${base}" class="flex wrapf mb8">${fkeep.map(([k, v]) => html`<input type="hidden" name="${k}" value="${v}">`)}${pick.t != null ? html`<input type="hidden" name="t" value="${pick.t}">` : ''}

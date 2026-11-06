@@ -63,6 +63,8 @@ const server = http.createServer(async (req, res) => {
     ctx.secure = req.headers['x-forwarded-proto'] === 'https' || url.protocol === 'https:';
 
     ctx.send = (body, status = 200, headers = {}) => { res.writeHead(status, { 'Content-Type': 'text/html; charset=utf-8', 'Cache-Control': 'no-store', ...headers }); res.end(String(body)); };
+    ctx.req = req;
+    ctx.raw = (status, headers, body) => { res.writeHead(status, headers); res.end(body); };
     ctx.json = (obj, status = 200) => { res.writeHead(status, { 'Content-Type': 'application/json; charset=utf-8', 'Cache-Control': 'no-store' }); res.end(JSON.stringify(obj)); };
     ctx.redirect = (to, flash) => {
       const h = { Location: to, 'Cache-Control': 'no-store' };
