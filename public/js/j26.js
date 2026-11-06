@@ -81,7 +81,7 @@ export function start(root, init) {
       <select data-sort style="width:auto;height:38px"><option value="">기본 순서 (군 → 엑셀 순)</option>${S.see ? '<option value="m">여유 많은 순</option>' : ''}<option value="g">수능 환산 높은 순</option></select></div>
     <p class="small muted mt8" data-count></p>
     <div class="jt-wrap"><table class="jt j26t${S.see ? '' : ' nocut'}"><thead><tr><th rowspan="2">군</th><th rowspan="2">지역</th><th rowspan="2" class="l">대학 · 학과</th><th rowspan="2">모집</th><th colspan="3">비율</th><th rowspan="2">지표</th><th rowspan="2">수능 환산</th><th rowspan="2">내신</th><th rowspan="2">실기만점<br>총점</th>
-      ${S.see ? '<th colspan="2">커트라인</th><th colspan="2">여유</th><th rowspan="2">판정</th><th colspan="3">2025 커트</th>' : ''}<th rowspan="2" class="l">실기 종목</th></tr>
+      ${S.see ? '<th colspan="2">커트라인</th><th colspan="2">여유</th><th rowspan="2">판정</th><th colspan="3">2026 커트라인</th>' : ''}<th rowspan="2" class="l">실기 종목</th></tr>
       <tr class="sub"><th>수능</th><th>내신</th><th>실기</th>${S.see ? '<th>최종</th><th>최저</th><th>점수</th><th>감</th><th>부산</th><th>협회</th><th>타학원</th>' : ''}</tr></thead><tbody></tbody></table></div>`;
     // 값 채우기
     root.querySelectorAll('[data-k]').forEach(el => { const v = S.inp[el.dataset.k]; if (v != null) el.value = v; });

@@ -468,3 +468,4 @@ tr.jx>td{padding:0!important;text-align:left!important;white-space:normal!import
 .uc-tot.v-ok>em,.uc-tot.v-ok>em.green,.uc-tot.v-ok>em.red{color:#1d4ed8}
 .uc-tot.v-mid>em,.uc-tot.v-mid>em.green,.uc-tot.v-mid>em.red{color:#a16207}
 .uc-tot.v-risk>small{color:var(--red);font-weight:700}
+.uc-tot.v-ok>small{color:#1d4ed8;font-weight:700}.uc-tot.v-mid>small{color:#a16207;font-weight:700}
