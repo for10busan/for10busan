@@ -464,3 +464,6 @@ tr.jx>td{padding:0!important;text-align:left!important;white-space:normal!import
 .uc-tot.v-risk{background:#ffe9ec;border-color:var(--red)}
 .j26-vd{position:absolute;top:8px;right:10px;font-size:14px;font-weight:800}
 .v-ok .j26-vd{color:#1d4ed8}.v-mid .j26-vd{color:#b45309}.v-risk .j26-vd{color:var(--red)}
+/* 총점 아래 글자도 숫자와 같은 색 */
+.uc-tot.v-ok>em,.uc-tot.v-ok>em.green,.uc-tot.v-ok>em.red{color:#1d4ed8}
+.uc-tot.v-mid>em,.uc-tot.v-mid>em.green,.uc-tot.v-mid>em.red{color:#a16207}
