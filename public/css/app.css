@@ -448,3 +448,7 @@ tr.jx>td{padding:0!important;text-align:left!important;white-space:normal!import
 .uc-tbl td.on2{background:#f0fbf4}
 .j26-box{grid-template-columns:1fr 1fr 3fr 1.3fr}
 @media(max-width:720px){.j26-box{grid-template-columns:1fr 1fr}}
+/* 정시 학년도 고르기 (수시·정시 아래 작은 줄) */
+.seg.seg-year{background:#fff;border:1px solid var(--line);margin-top:-6px}
+.seg.seg-year a{font-size:13.5px;padding:7px}
+.seg.seg-year a.on{background:var(--ink);color:#fff}

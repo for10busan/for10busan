@@ -127,11 +127,13 @@ T.addEventListener('click',e=>{if(e.target.closest('.jx')||e.target.closest('td.
  sel.onchange=()=>load(td,tr.dataset.u,sel.value);td.querySelector('.jx-x').onclick=()=>{x.remove();tr.classList.remove('on')};
  load(td,tr.dataset.u,sel.value);const top=tr.getBoundingClientRect().top;if(top>innerHeight*.6||top<0)tr.scrollIntoView({block:'start',behavior:'smooth'})});})()`;
 
-// K:컨설팅 위쪽: 수시 · 정시 · 2026 정시
+// K:컨설팅 위쪽: 수시 · 정시, 정시를 고르면 아래에 학년도 (왼쪽부터 2026 → 2027)
 function modeSeg(ctx, cur) {
   const b = ctx.query.b, s = ctx.query.s;
   const href = m => qs('/admin/consulting', { m, b, s });
-  return html`<div class="seg mt12">${[['susi', '', '수시'], ['jungsi', 'jungsi', '정시 (2027)'], ['j26', 'j26', '2026 정시']].map(([k, m, l]) => html`<a class="${cur === k ? 'on' : ''}" href="${href(m)}">${l}</a>`)}</div>`;
+  const isJ = cur === 'jungsi' || cur === 'j26';
+  return html`<div class="seg mt12"><a class="${isJ ? '' : 'on'}" href="${href('')}">수시</a><a class="${isJ ? 'on' : ''}" href="${href('jungsi')}">정시</a></div>
+  ${isJ ? html`<div class="seg seg-year">${[['j26', 'j26', '2026학년도'], ['jungsi', 'jungsi', '2027학년도']].map(([k, m, l]) => html`<a class="${cur === k ? 'on' : ''}" href="${href(m)}">${l}</a>`)}</div>` : ''}`;
 }
 const K_HERO = html`<div class="hero" style="padding-bottom:16px"><small>Korea Sports Consulting</small><b>K:컨설팅 프로그램</b><div class="small muted">수시·정시 지원 예상</div>
     <div class="flex mt12" style="position:relative;z-index:1"><a class="btn sm dark" style="border:1px solid #444" href="/admin/consulting/results">${icon('doc')}K:결과분석표</a><a class="btn sm" href="/admin/consulting/students">${icon('users')}학생관리</a></div></div>`;
