@@ -151,7 +151,7 @@ export function start(root, init) {
     const s = p.sheet; const G = cell(s, 'G'), H = cell(s, 'H'), Z = cell(s, 'Z'), X = cell(s, 'X');
     const ok = hasScore();
     const mg = ok && n(Z) != null && n(p.cut) != null ? Z - p.cut : null;
-    const verdict = !ok || n(Z) == null || n(p.cut) == null ? null : Z >= p.cut ? ['가능', 'green'] : n(p.cut_low) != null && Z >= p.cut_low ? ['소신', 'blue'] : ['위험', 'red'];
+    const verdict = !ok || n(Z) == null || n(p.cut) == null ? null : Z >= p.cut ? ['적정', 'blue'] : n(p.cut_low) != null && Z >= p.cut_low ? ['소신', 'amber'] : ['위험', 'red'];
     return { G: ok ? G : null, H: ok ? H : null, Z: ok ? Z : null, X: ok && mg != null ? X : null, mg, verdict };
   }
   function drawTable() {
@@ -203,7 +203,7 @@ export function start(root, init) {
           <div class="uc-box"><small>내신</small><b data-o="H">—</b></div>
           <div class="uc-box uc-prac"><small>실기 <b data-o="I">0</b> / ${f(typeof p.p_prac === 'number' && p.p_prac ? p.p_prac : n(cell(s, 'Z')) != null ? cell(s, 'Z') - (n(cell(s, 'G')) || 0) - (n(cell(s, 'H')) || 0) : null)}</small>
             ${evs.length ? `<div class="uc-ex">${evs.map(e => `<label><span>${esc(e.name)}</span><input type="number" step="any" inputmode="decimal" data-rec="${e.rec}" data-sheet="${esc(s)}" value="${recs[e.rec] ?? ''}" placeholder="기록"><em data-pt="${e.pts}"></em></label>`).join('')}</div>` : '<p class="small muted mb0">실기 없음</p>'}</div>
-          <div class="uc-box uc-tot"><small>총점</small><b data-o="tot">—</b><em data-o="mg"></em></div>
+          <div class="uc-box uc-tot" data-o="totbox"><span class="j26-vd" data-o="vd"></span><small>총점</small><b data-o="tot">—</b><em data-o="mg"></em></div>
         </div>
         <p class="help mb0" data-o="note"></p></div>
       ${tbl.length ? `<div class="uc-sec"><div class="uc-st">실기 배점표 (2026학년도 · <span data-o="sex">${male ? '남' : '여'}</span> 기준 칸 진하게)</div><div class="scroll-x"><table class="uc-tbl j26-tbl"><tr>${tbl.map(t => `<th colspan="3">${esc(t.name)}</th>`).join('')}</tr>
@@ -225,7 +225,13 @@ export function start(root, init) {
     const tot = ok ? (G || 0) + (H || 0) + I : anyRec ? I : null;
     O('tot').textContent = f(tot);
     const mg = O('mg');
-    if (S.see && ok && n(p.cut) != null && tot != null) { const m = tot - p.cut; mg.className = m >= 0 ? 'green' : 'red'; mg.textContent = `최종 커트 ${f(p.cut, 2)} 대비 ${m >= 0 ? '+' : ''}${f(m, 2)}`; }
+    // 총점으로 판정: 최종 커트 이상 적정 · 최저 커트 이상 소신 · 그 아래 위험
+    const vbox = O('totbox'); const vd = O('vd'); vbox.classList.remove('v-ok', 'v-mid', 'v-risk'); vd.textContent = '';
+    if (S.see && ok && n(p.cut) != null && tot != null) {
+      const m = tot - p.cut; mg.className = m >= 0 ? 'green' : 'red'; mg.textContent = `최종 커트 ${f(p.cut, 2)} 대비 ${m >= 0 ? '+' : ''}${f(m, 2)}${n(p.cut_low) != null ? ` · 최저 ${f(p.cut_low, 2)}` : ''}`;
+      const v = tot >= p.cut ? ['적정', 'v-ok'] : n(p.cut_low) != null && tot >= p.cut_low ? ['소신', 'v-mid'] : ['위험', 'v-risk'];
+      vbox.classList.add(v[1]); vd.textContent = v[0];
+    }
     else { mg.className = ''; mg.textContent = ok ? '' : '수능 성적을 넣으면 수능 환산과 합쳐져요'; }
     O('note').textContent = ok ? `실기만점 총점 ${f(cell(s, 'Z'))} = 수능 환산 + 내신 + 실기 만점.${S.sid ? ' 실기 기록도 위 「저장」을 누르면 함께 저장돼요.' : ''}` : '수능 성적(또는 표본)을 넣으면 수능 환산 점수도 계산돼요.';
     // 종목별 배점 + 배점표 표시

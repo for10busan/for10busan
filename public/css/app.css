@@ -457,3 +457,10 @@ tr.jx>td{padding:0!important;text-align:left!important;white-space:normal!import
 .j26-pct .pill{padding:6px 11px;cursor:pointer}
 .j26-tbl td.sx{font-weight:800;color:var(--ink)}
 .j26-tbl td.hit{background:#16a34a!important;color:#fff!important;font-weight:800}
+/* 총점 칸 판정 색: 적정 파랑 · 소신 노랑 · 위험 빨강 */
+.uc-tot{position:relative}
+.uc-tot.v-ok{background:#e8f0ff;border-color:#2563eb}.uc-tot.v-ok>b{color:#1d4ed8}
+.uc-tot.v-mid{background:#fff7d6;border-color:#d97706}.uc-tot.v-mid>b{color:#a16207}
+.uc-tot.v-risk{background:#ffe9ec;border-color:var(--red)}
+.j26-vd{position:absolute;top:8px;right:10px;font-size:14px;font-weight:800}
+.v-ok .j26-vd{color:#1d4ed8}.v-mid .j26-vd{color:#b45309}.v-risk .j26-vd{color:var(--red)}
