@@ -470,3 +470,9 @@ tr.jx>td{padding:0!important;text-align:left!important;white-space:normal!import
 .uc-tot.v-risk>small{color:var(--red);font-weight:700}
 .uc-tot.v-ok>small{color:#1d4ed8;font-weight:700}.uc-tot.v-mid>small{color:#a16207;font-weight:700}
 .jt th small{font-size:10.5px;font-weight:600;opacity:.75}.jt td.gam{white-space:nowrap}
+/* 정시 표 글자 진하게: 지역 · 학교/학과(같은 색) · 모집 · 반영비율 · 반영지표 */
+.jt td.reg,.jt td.reg span{font-weight:700;color:var(--ink)}
+.jt td.reg span{color:var(--ink2)}
+.jt td.nm a,.jt td.nm a b{font-weight:800;color:var(--ink)}
+.jt tbody td:nth-child(4),.jt tbody td:nth-child(5),.jt tbody td:nth-child(6),.jt tbody td:nth-child(7),.j26t tbody td:nth-child(8){font-weight:700;color:var(--ink)}
+.jt tr.jx td{font-weight:normal}
