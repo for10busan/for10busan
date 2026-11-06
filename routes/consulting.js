@@ -4,7 +4,7 @@ import { one, all, run, tx, J } from '../lib/db.js';
 import { html, raw, icon, pageTitle, empty, csrfField, pills, chip } from '../lib/html.js';
 import { num, fmtNum, today, korDay, canSeeCutoff, GRADES, isStaff } from '../lib/util.js';
 import { branches } from '../lib/services.js';
-import { REGION_GROUPS, regionGroup, uniLabel, schoolScore, practicalScore, maxPoints, practicalMax, stepPoints, latestCutoff, programRow, EXAMS, EXAM_SUBJECTS, SUBJECT_MAX, convertRaw, coverage, rangeText, examTable } from '../lib/admissions.js';
+import { REGION_GROUPS, regionGroup, uniLabel, schoolScore, practicalScore, maxPoints, practicalMax, stepPoints, latestCutoff, programRow, suneungMax, EXAMS, EXAM_SUBJECTS, SUBJECT_MAX, convertRaw, coverage, rangeText, examTable } from '../lib/admissions.js';
 
 const exMap = () => Object.fromEntries(all('SELECT id,name,unit,higher_better FROM exercises').map(e => [e.id, e]));
 const curYear = () => Number(today().slice(0, 4)) + (Number(today().slice(5, 7)) >= 3 ? 1 : 0); // 입시 학년도
@@ -94,15 +94,35 @@ get('/admin/consulting', 'staff', ctx => {
   <div class="seg">${[['0', '실기 대학'], ['1', '무실기 대학']].map(([v, l]) => html`<a class="${(ctx.query.np || '0') === v ? 'on' : ''}" href="${qs('/admin/consulting', { ...keep, np: v })}">${l}</a>`)}</div>
   ${studentPicker(ctx, '/admin/consulting', keep, pick)}
   ${filterBar(ctx, '/admin/consulting', keep, f)}
-  <p class="small muted"><b>${rows.length}</b>곳 · 줄을 누르면 학교 시트로 가요 · 총점 = ${m === '정시' ? '수능 환산' : '내신 점수'} + 실기 만점${see ? ', 여유 = 총점 − 커트라인(최초합 · 예비합), 감 = 여유 ÷ 실기 한 급간' : ''}</p>
-  ${rows.length ? html`<div class="card scroll-x" style="padding:8px"><table class="tbl" style="min-width:860px"><tr><th>지역</th><th>대학 · 학과</th><th>전형</th><th>모집</th><th>비율</th><th>수능최저</th><th>${m === '정시' ? '수능' : '내신'}</th><th>실기 만점</th><th>총점</th>${see ? html`<th>커트라인<br>최초합/예비</th><th>여유<br>(점수·감)</th><th>판정</th>` : ''}<th>실기 종목</th></tr>
-    ${rows.map(({ u, c }) => html`<tr data-href="/admin/consulting/program/${u.id}${pick.s ? '?s=' + pick.s.id : ''}" style="cursor:pointer"><td>${u.region || '—'}</td><td style="text-align:left"><a href="/admin/consulting/program/${u.id}${pick.s ? '?s=' + pick.s.id : ''}"><b>${u.name}</b></a><br><span class="small">${u.dept || ''}${u.teacher_cert ? ' · 교직' : ''}</span></td>
+  <p class="small muted"><b>${rows.length}</b>곳 · 줄을 누르면 바로 아래에 학생별 점수 계산이 열려요 · 총점 = ${m === '정시' ? '수능 환산' : '내신 점수'} + 실기 만점${see ? ', 여유 = 총점 − 커트라인(최초합 · 예비합), 감 = 여유 ÷ 실기 한 급간' : ''}</p>
+  ${rows.length ? html`<div class="card scroll-x" style="padding:8px"><table class="tbl" style="min-width:860px" data-jx="${JSON.stringify({ s: pick.s?.id || '', g: pick.g, t: pick.t, p: null })}"><tr><th>지역</th><th>대학 · 학과</th><th>전형</th><th>모집</th><th>비율</th><th>수능최저</th><th>${m === '정시' ? '수능' : '내신'}</th><th>실기 만점</th><th>총점</th>${see ? html`<th>커트라인<br>최초합/예비</th><th>여유<br>(점수·감)</th><th>판정</th>` : ''}<th>실기 종목</th></tr>
+    ${rows.map(({ u, c }) => html`<tr data-u="${u.id}" data-name="${u.name} ${u.dept || ''}" style="cursor:pointer"><td>${u.region || '—'}</td><td style="text-align:left"><a href="/admin/consulting/program/${u.id}${pick.s ? '?s=' + pick.s.id : ''}"><b>${u.name}</b></a><br><span class="small">${u.dept || ''}${u.teacher_cert ? ' · 교직' : ''}</span></td>
       <td class="small">${[u.track && u.track_type && u.track.startsWith(u.track_type) ? null : u.track_type, u.track].filter(Boolean).join(" ") || '—'}</td><td>${u.quota ? u.quota + '명' : '—'}</td>
       <td class="small">${m === '정시' ? (u.suneung_ratio ?? '—') : (u.school_ratio ?? '—')} · ${u.practical_ratio ?? '—'}</td><td class="small">${u.suneung_min || 'X'}</td>
       <td>${f1(c.base)}</td><td>${f1(c.pmax)}</td><td><b>${f1(c.total)}</b></td>${see ? html`<td>${cutCell(ctx, c.cut)}</td><td>${marginCell(c.m1, c.g1)}</td><td>${verdictChip(c.verdict)}</td>` : ''}<td class="small" style="text-align:left">${exNames(u, ex) || '무실기'}</td></tr>`)}</table></div>
-    <script>document.querySelectorAll('tr[data-href]').forEach(t=>t.addEventListener('click',e=>{if(!e.target.closest('a'))location.href=t.dataset.href}))</script>`
+    ${studOptions(ctx, pick)}<script>${raw(UC_JS)}</script><script>${raw(JX_JS)}</script>`
     : empty('조건에 맞는 대학이 없어요', '대학 관리에서 전형 정보를 넣거나, 엑셀에서 한 번에 붙여 넣을 수 있어요.')}`, { active: '/admin/consulting', wide: true });
 });
+
+// K:컨설팅 표: 줄을 누르면 바로 아래에 대학검색과 같은 계산 카드(학생별 수능·내신·실기 입력)가 펼쳐짐
+function studOptions(ctx, pick) {
+  const b = ctx.query.b ? Number(ctx.query.b) : null;
+  const studs = all(`SELECT id,name,grade FROM users WHERE role='student' AND status='approved' ${b ? 'AND branch_id=?' : ''} ORDER BY name`, ...(b ? [b] : []));
+  return html`<template id="jxStud"><option value="">학생 없이 직접 입력</option>${studs.map(x => html`<option value="${x.id}">${x.name}${x.grade ? ` (${x.grade})` : ''}</option>`)}</template>`;
+}
+const JX_JS = `(()=>{const T=document.querySelector('[data-jx]');if(!T)return;const S=document.getElementById('jxStud');
+const P=JSON.parse(T.dataset.jx);
+const load=async(box,id,sid)=>{const q=new URLSearchParams();if(sid){q.set('s',sid)}else{if(P.p!=null)q.set('p',P.p);if(P.t!=null)q.set('t',P.t)}if(P.g)q.set('g',P.g);
+ const b=box.querySelector('.uc-b');b.innerHTML='<p class="small muted">불러오는 중…</p>';
+ try{const r=await fetch('/admin/student-predict/card/'+id+'?'+q,{credentials:'same-origin'});if(!r.ok)throw 0;b.innerHTML=await r.text();b.querySelectorAll('[data-calc]').forEach(x=>window.ucRun&&window.ucRun(x))}catch(_){b.innerHTML='<p class="small red">불러오지 못했어요. 다시 눌러 주세요.</p>'}};
+T.addEventListener('click',e=>{if(e.target.closest('.jx')||e.target.closest('td.cut'))return;const tr=e.target.closest('tr[data-u]');if(!tr)return;
+ if(e.target.closest('a')&&(e.metaKey||e.ctrlKey||e.shiftKey))return;e.preventDefault();
+ const open=tr.nextElementSibling&&tr.nextElementSibling.classList.contains('jx');T.querySelectorAll('tr.jx').forEach(x=>x.remove());T.querySelectorAll('tr.on').forEach(x=>x.classList.remove('on'));if(open)return;
+ tr.classList.add('on');const x=document.createElement('tr');x.className='jx '+(tr.className.match(/g[가나다]/)||[''])[0];const td=document.createElement('td');td.colSpan=tr.children.length;
+ td.innerHTML='<div class="jx-in"><div class="jx-hd"><b>'+tr.dataset.name+'</b><label>학생 <select class="jx-s"></select></label><button type="button" class="btn xs ghost jx-x">닫기</button></div><div class="uc-b"></div></div>';
+ x.appendChild(td);tr.after(x);const sel=td.querySelector('.jx-s');sel.innerHTML=S?S.innerHTML:'<option value="">학생 없이 직접 입력</option>';sel.value=P.s||'';
+ sel.onchange=()=>load(td,tr.dataset.u,sel.value);td.querySelector('.jx-x').onclick=()=>{x.remove();tr.classList.remove('on')};
+ load(td,tr.dataset.u,sel.value);const top=tr.getBoundingClientRect().top;if(top>innerHeight*.6||top<0)tr.scrollIntoView({block:'start',behavior:'smooth'})});})()`;
 
 // ---------- K:컨설팅 정시: 군별 한눈에 보는 표 ----------
 const GUN_ORDER = ['가', '나', '다'];
@@ -138,7 +158,7 @@ function jungsiPage(ctx, pick, ex) {
     <input type="search" name="q" value="${f.q}" placeholder="대학·학과·지역 검색" class="grow" style="min-width:160px">
     <select name="sort" style="width:auto" onchange="this.form.submit()"><option value="">기본 순서 (군 → 대학)</option><option value="margin" ${ctx.query.sort === 'margin' ? 'selected' : ''}>여유 많은 순</option></select></form>
   <div class="jfil">
-    <div class="pills mb0">${[['', '전체 군'], ...GUN_ORDER.map(g => [g, g + '군'])].map(([v, l]) => html`<a class="pill ${gun === v ? 'on' : ''}" href="${qs(base, { ...keep, gun: v })}">${l} <small>${gunCnt[v] || 0}</small></a>`)}</div>
+    <div class="pills mb0">${[['', '전체 군'], ...GUN_ORDER.map(g => [g, g + '군'])].map(([v, l]) => html`<a class="pill ${v ? 'gp g' + v : ''} ${gun === v ? 'on' : ''}" href="${qs(base, { ...keep, gun: v })}">${l} <small>${gunCnt[v] || 0}</small></a>`)}</div>
     <div class="pills mb0">${[['', '전체 지역'], ...REGION_GROUPS.map(([g]) => [g, g])].map(([v, l]) => html`<a class="pill ${f.r === v ? 'on' : ''}" href="${qs(base, { ...keep, r: v })}">${l}</a>`)}</div>
   </div>
   <div class="jfil">
@@ -147,13 +167,14 @@ function jungsiPage(ctx, pick, ex) {
       <b>내신 등급</b><select name="t" onchange="this.form.submit()"><option value="">${pick.s?.school_grade != null && pick.t == null ? `학생 ${fmtNum(pick.s.school_grade, 2)}` : '없음'}</option>${[1, 1.5, 2, 2.5, 3, 3.5, 4, 4.5, 5, 5.5, 6, 6.5, 7, 7.5, 8, 8.5, 9].map(v => html`<option value="${v}" ${pick.t === v ? 'selected' : ''}>${v}등급</option>`)}</select>
       <span class="small muted">내신 반영 ${schoolN}곳에 적용</span></form>
   </div>
-  <p class="small muted mt8">${rows.length}곳 · 총점 = 수능 환산 + 내신 + 실기 만점${see ? ', 여유 = 총점 − 예상 커트라인(최초합 · 예비합) · 커트라인 칸을 누르면 최초합·예비합을 바로 고칠 수 있어요' : ''}</p>
-  ${rows.length ? html`<div class="jt-wrap" data-csrf="${ctx.csrf}" data-year="${y}"><table class="jt${see ? '' : ' nocut'}">
+  <p class="small muted mt8">${rows.length}곳 · 줄을 누르면 바로 아래에 학생별 수능 환산·실기 기록 입력이 열려요 · 총점 = 수능 환산 + 내신 + 실기 만점${see ? ', 여유 = 총점 − 예상 커트라인(최초합 · 예비합) · 커트라인 칸을 누르면 최초합·예비합을 바로 고칠 수 있어요' : ''}</p>
+  ${rows.length ? html`<div class="jt-wrap" data-csrf="${ctx.csrf}" data-year="${y}"><table class="jt${see ? '' : ' nocut'}" data-jx="${JSON.stringify({ s: pick.s?.id || '', g: pick.g, t: pick.t, p: pick.p })}">
     <thead><tr><th rowspan="2">군</th><th rowspan="2">지역</th><th rowspan="2" class="l">대학 · 학과</th><th rowspan="2">모집</th><th colspan="3">비율</th><th rowspan="2">수능 환산</th><th rowspan="2">내신</th><th rowspan="2">실기 만점</th><th rowspan="2">총점</th>
       ${see ? html`<th colspan="2">커트라인</th><th colspan="2">여유 (점수 · 감)</th><th rowspan="2">판정</th>` : ''}<th rowspan="2" class="l">실기 종목</th></tr>
       <tr class="sub"><th>수능</th><th>내신</th><th>실기</th>${see ? html`<th>최초합</th><th>예비합</th><th>최초합</th><th>예비합</th>` : ''}</tr></thead>
     <tbody>${rows.map(({ u, c }) => { const href = `/admin/consulting/program/${u.id}${pick.s ? '?s=' + pick.s.id : ''}`; const exs = J(u.exercises, []).map(i => ex[i]?.name).filter(Boolean);
-      return html`<tr id="u${u.id}"><td class="gun">${gunOf(u) || '—'}</td><td class="reg">${regionGroup(u.region)}<span>${u.city || u.region || ''}</span></td>
+      const gn = gunOf(u);
+      return html`<tr id="u${u.id}" class="${gn ? 'g' + gn : ''}" data-u="${u.id}" data-name="${u.name} ${u.dept || ''}"><td class="gun">${gn ? gn + '군' : '—'}</td><td class="reg">${regionGroup(u.region)}<span>${u.city || u.region || ''}</span></td>
       <td class="l nm"><a href="${href}">${u.name} <b>${u.dept || ''}</b></a>${u.teacher_cert ? html` <span class="tag">교직</span>` : ''}</td><td>${quotaText(u)}</td>
       <td>${nz(u.suneung_ratio)}</td><td>${nz(u.school_ratio)}</td><td>${nz(u.practical_ratio)}</td>
       <td class="nowrap">${c.base != null ? html`<b>${fmtNum(c.base, 2)}</b>` : '—'}<span class="muted" title="${c.smaxEst ? '수능 만점이 입력되지 않아 실기 만점과 반영비율로 추정한 값' : ''}">/${c.smax ? (c.smaxEst ? '≈' : '') + fmtNum(c.smax, 2) : '—'}</span></td>
@@ -163,7 +184,7 @@ function jungsiPage(ctx, pick, ex) {
       ${see ? html`<td class="cut" data-u="${u.id}" data-y="${c.cut?.year || y}" data-c="${c.cut?.cutoff ?? ''}" data-f="${c.cut?.final ?? ''}" title="눌러서 고치기"><b>${c.cut ? fmtNum(c.cut.cutoff, 2) : '—'}</b> ${icon('pen', 'pen')}</td><td class="cut" data-u="${u.id}" data-y="${c.cut?.year || y}" data-c="${c.cut?.cutoff ?? ''}" data-f="${c.cut?.final ?? ''}" title="눌러서 고치기">${c.cut?.final != null ? fmtNum(c.cut.final, 2) : '—'}</td>
         <td class="nowrap">${mg(c.m1, c.g1)}</td><td class="nowrap">${mg(c.m2, c.g2)}</td><td>${verdictChip(c.verdict)}</td>` : ''}
       <td class="l exs">${exs.length ? exs.map(exShort).join(' · ') : ''}</td></tr>`; })}</tbody></table></div>
-  ${see ? html`<script>${raw(JT_JS)}</script>` : ''}` : empty('조건에 맞는 대학이 없어요', '군·지역·학과 조건을 바꿔 보세요.')}`, { active: '/admin/consulting', wide: true });
+  ${studOptions(ctx, pick)}<script>${raw(UC_JS)}</script><script>${raw(JX_JS)}</script>${see ? html`<script>${raw(JT_JS)}</script>` : ''}` : empty('조건에 맞는 대학이 없어요', '군·지역·학과 조건을 바꿔 보세요.')}`, { active: '/admin/consulting', wide: true });
 }
 // 커트라인 칸을 누르면 그 자리에서 최초합·예비합 고치기
 const JT_JS = `(()=>{const W=document.querySelector('.jt-wrap');if(!W)return;
@@ -348,7 +369,7 @@ function uniDetail(ctx, u, ex, pick) {
   const see = canSeeCutoff(ctx.user); const isJ = u.admission === '정시';
   const ids = J(u.exercises, []); const sc = J(u.scoring); const gt = J(u.grade_table);
   const cuts = see ? all('SELECT * FROM cutoffs WHERE university_id=? ORDER BY year DESC', u.id) : [];
-  const row = programRow(u, { grade: pick.grade, system: pick.g, studentId: pick.s?.id });
+  const row = programRow(u, { grade: pick.grade, system: pick.g, studentId: pick.s?.id, pct: pick.p });
   const rec = pick.s ? Object.fromEntries(ids.map(i => [i, monthlyAvg(pick.s.id, i)])) : {};
   const data = { isJ, g: pick.g, grade: pick.grade, base: isJ ? row.base : null, gender: pick.gender || 'M', gt, scoring: sc, rec,
     ex: ids.map(i => ({ id: i, name: ex[i]?.name || '?', unit: ex[i]?.unit || '', hb: ex[i]?.higher_better ?? 1 })),
@@ -356,7 +377,7 @@ function uniDetail(ctx, u, ex, pick) {
   const info = [['학교/전형명', u.name], ['지역 / 운영', [[u.region, u.city].filter(Boolean).join(' '), u.founding].filter(Boolean).join(' / ')], ['학과', u.dept], ['전형', trackText(u)],
     ['모집인원', u.quota ? `${u.quota}명` : null], ['배수선발 · 단계', u.stage], ['교직이수', u.teacher_cert ? 'O' : null], ['실기 만점', practicalMax(u) != null ? `${fmtNum(practicalMax(u))}점` : null],
     ['반영비율', ratioText(u), 1],
-    ...(isJ ? [['수능 반영 영역', u.subjects, 1], ['영역별 반영', u.subject_weights, 1], ['수능 만점', u.suneung_max != null ? `${fmtNum(u.suneung_max)}점` : null]]
+    ...(isJ ? [['수능 반영 영역', u.subjects, 1], ['영역별 반영', u.subject_weights, 1], ['수능 만점', row.smax != null ? `${row.smaxEst ? '≈' : ''}${fmtNum(row.smax)}점${row.smaxEst ? ' (실기 만점·반영비율로 추정)' : ''}` : null]]
       : [['학년별 반영', u.year_weights], ['내신 반영교과', [u.subjects, u.subject_weights, u.subject_scope].filter(Boolean).join(' · '), 1]]),
     ['수능최저', u.suneung_min || 'X'], ['면접고사', u.interview_date || 'X'], ['실기고사', u.practical_date, 1], ['메모', u.memo, 1]].filter(r => r[1]);
   const notes = J(u.field_notes);
@@ -365,7 +386,7 @@ function uniDetail(ctx, u, ex, pick) {
   <div class="uc-sec"><div class="uc-st">${isJ ? '수능' : '내신'} · 실기 · 총점${see ? ' · 커트라인' : ''}</div>
     <div class="uc-calc" data-calc>
       <script type="application/json">${raw(JSON.stringify(data).replace(/</g, '\\u003c'))}</script>
-      <div class="row2">${isJ ? html`<label class="field"><span>수능 환산 점수 ${u.suneung_max ? `(만점 ${fmtNum(u.suneung_max)})` : ''}</span><input type="number" step="any" data-k="base" value="${row.base != null ? fmtNum(row.base, 2) : ''}" placeholder="${pick.s ? '모의고사 성적이 없어요' : '예: 520'}"></label>`
+      <div class="row2">${isJ ? html`<label class="field"><span>수능 환산 점수 ${row.smax ? `(만점 ${row.smaxEst ? '≈' : ''}${fmtNum(row.smax)})` : ''}</span><input type="number" step="any" data-k="base" value="${row.base != null ? fmtNum(row.base, 2) : ''}" placeholder="${pick.s ? '모의고사 성적이 없어요' : '예: 520'}"></label>`
         : html`<label class="field"><span>적용 학년도</span><select data-k="g"><option value="9" ${pick.g === 9 ? 'selected' : ''}>2027학년도 · 9등급제</option><option value="5" ${pick.g === 5 ? 'selected' : ''}>2028학년도 · 5등급제</option></select></label>
           <label class="field"><span>내신 등급 (소수점 가능)</span><input type="number" step="any" data-k="grade" value="${pick.grade ?? ''}" placeholder="예: 2.5"></label>`}</div>
       <div class="uc-grid${see ? '' : ' nocut'}">
@@ -400,6 +421,7 @@ function run(box){const D=JSON.parse(box.querySelector('script').textContent);co
    for(let k=0;k<n;k++){h+='<tr>'+cols.map(c=>{const r=c.t[k];if(!r)return '<td></td><td></td>';const on=hit(c.t,c.e.hb,rec[c.e.id])===k;const th=r[0]>=9999?'그 외':r[0]===0&&c.e.hb?'그 외':f(r[0],2);return '<td class="'+(on?'on':'')+'">'+f(r[1],2)+'</td><td class="'+(on?'on':'')+'">'+th+'</td>'}).join('')+'</tr>'}
    T.innerHTML=h;const L=O('sexlabel');if(L)L.textContent='('+(sex==='F'?'여':'남')+' 기준)'}};
  box.addEventListener('input',calc);box.addEventListener('change',calc);calc()}
+window.ucRun=run;
 document.addEventListener('toggle',async e=>{const d=e.target;if(!(d instanceof HTMLDetailsElement)||!d.classList.contains('uc')||!d.open)return;
  document.querySelectorAll('details.uc[open]').forEach(o=>{if(o!==d)o.open=false});
  const top=d.getBoundingClientRect().top;if(top<70)d.scrollIntoView({block:'start'});else if(top<0)d.scrollIntoView();

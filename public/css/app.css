@@ -413,3 +413,22 @@ h2.sec{font-weight:700;font-size:17px;letter-spacing:-.3px}
 .cutpop input{width:110px;height:34px;padding:0 8px;font-size:13.5px;text-align:right}
 .cutpop .flex{gap:6px;margin:4px 0 6px}.cutpop .btn{flex:1;height:34px}
 .nowrap{white-space:nowrap}
+/* 군 색: 가 빨강 · 나 초록 · 다 파랑 (배경은 옅게) */
+.jt tr.g가 td{background:#fff0f1}.jt tr.g나 td{background:#ecfbf1}.jt tr.g다 td{background:#eef4ff}
+.jt tbody tr.g가:hover td{background:#ffe2e5}.jt tbody tr.g나:hover td{background:#d9f5e3}.jt tbody tr.g다:hover td{background:#dde8ff}
+.jt td.gun{font-size:13px;font-weight:800}
+.jt tr.g가 td.gun{color:#e00018}.jt tr.g나 td.gun{color:#15803d}.jt tr.g다 td.gun{color:#1d4ed8}
+.jt tr.g가 td.gun,.jt tr.g나 td.gun,.jt tr.g다 td.gun{box-shadow:inset 4px 0 0 currentColor}
+.pill.gp.g가{color:#e00018;border-color:#f5b5bc;background:#fff0f1}.pill.gp.g나{color:#15803d;border-color:#a7e3bd;background:#ecfbf1}.pill.gp.g다{color:#1d4ed8;border-color:#b6ccfb;background:#eef4ff}
+.pill.gp.g가.on{background:#e00018;border-color:#e00018;color:#fff}.pill.gp.g나.on{background:#16a34a;border-color:#16a34a;color:#fff}.pill.gp.g다.on{background:#2563eb;border-color:#2563eb;color:#fff}
+/* 표 줄 펼치기 (학생별 점수 계산) */
+[data-jx] tr[data-u]{cursor:pointer}
+[data-jx] tr.on td{box-shadow:inset 0 -2px 0 var(--red)}
+.jt tr.on td.gun{box-shadow:inset 4px 0 0 currentColor,inset 0 -2px 0 var(--red)}
+tr.jx>td{padding:0!important;text-align:left!important;white-space:normal!important;cursor:default;background:#fff!important}
+.jx-in{padding:12px 14px 16px;border:2px solid var(--red);border-top:0;border-radius:0 0 14px 14px;background:#fafafb}
+.jx-hd{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+.jx-hd b{font-size:15px;font-weight:800;margin-right:auto}
+.jx-hd label{display:flex;align-items:center;gap:6px;font-size:13px;font-weight:700}
+.jx-hd select{width:auto;min-width:180px;height:36px;font-size:13.5px}
+.jx-in .uc-b{padding:0;border:0;background:none}
