@@ -9,6 +9,7 @@ const dash = v => (v == null || v === '' || v === 'ㅡ' ? '—' : esc(v));
 const parts = l => l.filter(([, v]) => typeof v === 'number' ? v > 0 : v && v !== 'ㅡ').map(([k, v]) => `${k} ${typeof v === 'number' ? f(v * 100, 1) + '%' : v}`).join(' · ') || '—';
 const pct = v => (typeof v === 'number' ? (v ? f(v * 100, 1) : '·') : v && v !== 'ㅡ' ? esc(v) : '·');
 
+const PCTS = [100, 97, 95, 93, 90, 88, 85, 80, 75, 70, 65, 60, 55, 50, 45, 40, 35, 30];
 const KOR = ['화작', '언매'], MATH = ['확통', '미적분', '기하'];
 const TAM = ['생윤', '윤사', '한지', '세지', '동아사', '세계사', '법정', '경제', '사문', '물리1', '화학1', '생과1', '지학1', '물리2', '화학2', '생과2', '지학2'];
 const LANG2 = ['독일어', '프랑스어', '스페인어', '중국어', '일본어', '러시아어', '아랍어', '베트남어', '한문'];
@@ -31,7 +32,7 @@ const exShort = s => { s = String(s); for (const [re, v] of EXS) if (re.test(s))
 export function start(root, init) {
   const S = { see: !!init.see, csrf: init.csrf, sid: init.s || null, sname: init.sname || '', inp: {}, rec: {}, filt: { gun: '', reg: '', edu: false, q: '', sort: '' }, open: null, data: null, book: null, dirty: false };
   if (init.saved) { S.inp = init.saved.inp || {}; S.rec = init.saved.rec || {}; }
-  if (!S.inp.D && init.gender) S.inp.D = init.gender === 'F' ? '여' : '남';
+  if (!S.inp.D) S.inp.D = init.gender === 'F' ? '여' : '남'; // 성별이 비면 엑셀 실기 배점 칸이 빈칸이 됨
   root.innerHTML = '<div class="card"><p class="small muted mb0">2026 정시 계산 자료를 불러오는 중…</p></div>';
   fetch('/admin/j26/data.json', { credentials: 'same-origin' }).then(r => (r.ok ? r.json() : Promise.reject(r.status))).then(d => {
     S.data = d;
@@ -55,9 +56,10 @@ export function start(root, init) {
     const d = S.data;
     root.innerHTML = `
     <div class="card j26-score">
+      <div class="j26-pct"><b>예상 점수 표본</b>${PCTS.map(v => `<a class="pill" data-pct="${v}">백${v}</a>`).join('')}</div>
       <div class="flex between wrapf mb8"><b>${S.sid ? esc(S.sname) + ' · ' : ''}2026 수능 성적</b>
         <div class="flex wrapf">
-          <label class="j26-inl">표본 <select data-sample><option value="">고르기</option>${d.samples.map(s => `<option>${esc(s.name)}</option>`).join('')}</select></label>
+          <label class="j26-inl">등급 표본 <select data-sample><option value="">고르기</option>${d.samples.filter(s => !/^백/.test(s.name)).map(s => `<option>${esc(s.name)}</option>`).join('')}</select></label>
           <label class="j26-inl">성별 <select data-k="D"><option>남</option><option>여</option></select></label>
           <button type="button" class="btn sm ghost" data-clear>비우기</button>
           ${S.sid ? '<button type="button" class="btn sm" data-save>저장</button>' : ''}
@@ -90,15 +92,33 @@ export function start(root, init) {
   let tmr = null;
   function onInput(e) {
     const el = e.target;
-    if (el.matches('[data-sample]')) { const smp = S.data.samples.find(s => s.name === el.value); if (smp) { S.inp = { ...smp.inp }; root.querySelectorAll('.j26-score [data-k]').forEach(x => { x.value = S.inp[x.dataset.k] ?? ''; }); S.dirty = true; recalc(); } return; }
+    if (el.matches('[data-sample]')) { const smp = S.data.samples.find(s => s.name === el.value); if (smp) useSample({ ...smp.inp }, null); return; }
     if (el.matches('[data-q]')) { S.filt.q = el.value.trim(); drawTable(); return; }
     if (el.matches('[data-sort]')) { S.filt.sort = el.value; drawTable(); return; }
-    if (el.matches('[data-rec]')) { const s = el.dataset.sheet; S.rec[s] = { ...(S.rec[s] || {}) }; if (el.value === '') delete S.rec[s][el.dataset.rec]; else S.rec[s][el.dataset.rec] = +el.value; S.book.set(s, { [el.dataset.rec]: el.value === '' ? '' : +el.value }); S.dirty = true; drawDetail(); return; }
+    if (el.matches('[data-rec]')) { const s = el.dataset.sheet; S.rec[s] = { ...(S.rec[s] || {}) }; if (el.value === '') delete S.rec[s][el.dataset.rec]; else S.rec[s][el.dataset.rec] = +el.value; S.book.set(s, { [el.dataset.rec]: el.value === '' ? '' : +el.value }); S.dirty = true; updateDetail(); return; }
     if (!el.matches('.j26-score [data-k]')) return;
     const k = el.dataset.k; const v = el.value;
+    if (k !== 'D') root.querySelectorAll('[data-pct].on').forEach(a => a.classList.remove('on'));
     if (v === '') delete S.inp[k]; else S.inp[k] = el.type === 'number' ? +v : v;
     S.dirty = true;
     clearTimeout(tmr); tmr = setTimeout(recalc, 120);
+  }
+  function useSample(inp, pctOn) {
+    S.inp = { ...inp, D: S.inp.D || inp.D || '남' };
+    root.querySelectorAll('.j26-score [data-k]').forEach(x => { x.value = S.inp[x.dataset.k] ?? ''; });
+    root.querySelectorAll('[data-pct]').forEach(a => a.classList.toggle('on', String(pctOn) === a.dataset.pct));
+    if (pctOn != null) $('[data-sample]', root).value = '';
+    S.dirty = true; recalc();
+  }
+  // 백분위 표본: 엑셀 표본(백93 등)이 있으면 그대로, 없으면 2026 변환표에서 그 백분위가 되는 원점수를 찾음
+  function pctSample(v) {
+    if (v >= 100) { const m = S.data.samples.find(x => x.name === '만점자'); if (m) return { ...m.inp }; }
+    const ex = S.data.samples.find(x => x.name === '백' + v); if (ex) return { ...ex.inp };
+    const T = (sheet, c1, c2, r1, r2) => { const t = S.data.consts[sheet] || {}; const rows = []; for (let r = r1; r <= r2; r++) { const raw = t[c1 + r], pc = t[c2 + r]; if (typeof raw === 'number' && typeof pc === 'number') rows.push([raw, pc]); } return rows; };
+    const pick = rows => { let best = null; for (const [raw, pc] of rows) if (pc >= v && (best == null || raw < best)) best = raw; return best ?? (rows.length ? Math.max(...rows.map(r => r[0])) : null); };
+    const grade = v >= 96 ? 1 : v >= 89 ? 2 : v >= 77 ? 3 : v >= 60 ? 4 : v >= 40 ? 5 : v >= 23 ? 6 : v >= 11 ? 7 : v >= 4 ? 8 : 9;
+    return { G: '화작', H: pick(T('국어,수학(수능)', 'C', 'D', 7, 107)), L: '확통', M: pick(T('국어,수학(수능)', 'O', 'P', 7, 107)), R: 100 - grade * 10,
+      V: '생윤', W: pick(T('탐구(수능)', 'C', 'D', 7, 57)), AA: '사문', AB: pick(T('탐구(수능)', 'AY', 'AZ', 7, 57)), AK: 50, AM: 5, AN: '상' };
   }
   function recalc() {
     S.book.clearInputs(VS()); S.book.set(VS(), { C: '학생', ...S.inp });
@@ -109,7 +129,8 @@ export function start(root, init) {
   function onClick(e) {
     const p = e.target.closest('[data-f] .pill');
     if (p) { const g = p.parentElement.dataset.f; S.filt[g] = g === 'edu' ? p.dataset.v === '1' : p.dataset.v; syncFilters(); drawTable(); return; }
-    if (e.target.closest('[data-clear]')) { S.inp = { D: S.inp.D || '남' }; root.querySelectorAll('.j26-score [data-k]').forEach(x => { x.value = S.inp[x.dataset.k] ?? ''; }); $('[data-sample]', root).value = ''; S.dirty = true; recalc(); return; }
+    const pc = e.target.closest('[data-pct]'); if (pc) { useSample(pctSample(+pc.dataset.pct), pc.dataset.pct); return; }
+    if (e.target.closest('[data-clear]')) { S.inp = { D: S.inp.D || '남' }; root.querySelectorAll('.j26-score [data-k]').forEach(x => { x.value = S.inp[x.dataset.k] ?? ''; }); $('[data-sample]', root).value = ''; root.querySelectorAll('[data-pct]').forEach(a => a.classList.remove('on')); S.dirty = true; recalc(); return; }
     if (e.target.closest('[data-save]')) { save(e.target.closest('[data-save]')); return; }
     if (e.target.closest('tr.jx')) return;
     const tr = e.target.closest('tr[data-id]');
@@ -161,11 +182,10 @@ export function start(root, init) {
   }
 
   // ---------- 펼친 학교 ----------
+  // 처음 열 때만 전체를 그리고, 실기 기록을 칠 때는 숫자·색만 바꿈 (입력 칸이 그대로 있어야 계속 칠 수 있음)
   function drawDetail() {
     const box = $('[data-detail]', root); if (!box) return;
     const p = S.byId.get(S.open); const sh = S.data.sheets[p.sheet]; const s = p.sheet;
-    const G = cell(s, 'G'), H = cell(s, 'H'), I = cell(s, 'I'), Z = cell(s, 'Z');
-    const ok = hasScore(); const tot = ok ? (n(G) || 0) + (n(H) || 0) + (n(I) || 0) : null;
     const male = (S.inp.D || '남') !== '여';
     const recs = S.rec[s] || {};
     const info = [['전형', `${p.track || ''} · ${p.stage || ''}`], ['모집인원', p.quota], ['반영 비율', parts([['수능', p.r_sun], ['내신', p.r_school], ['실기', p.r_prac], ['면접', p.r_itv], ['적/인성', p.r_apt]])],
@@ -175,23 +195,54 @@ export function start(root, init) {
       ['원서접수', p.d_apply], ['실기고사', p.d_prac], ['면접', p.d_itv], ['최종 발표', p.d_final], ['전년도 경쟁률', p.c_quota ? `${p.c_quota}명 모집 · ${p.c_app ?? '—'}명 지원 · ${f(p.c_rate, 2)} : 1` : null],
       ['입시 변경사항', p.changes], ...(S.see ? [['커트 비고', p.cut_note]] : [])].filter(([, v]) => v != null && v !== '' && v !== 'ㅡ' && v !== '-');
     const evs = sh.events || [];
+    const tbl = sh.table || [];
     box.innerHTML = `<div class="jx-hd"><b>${esc(p.name)} ${esc(p.dept)}</b><span class="small muted">${esc(p.gun || '')} · ${esc(String(p.region || '').replace(/\n/g, ' '))} · ${esc(p.founding || '')}</span><button type="button" class="btn xs ghost" data-x>닫기</button></div>
       <div class="uc-sec"><div class="uc-st">총점 계산 <span class="small muted">(${male ? '남' : '여'} 기준 · 실기 기록을 넣으면 바로 계산)</span></div>
         <div class="uc-grid j26-box">
-          <div class="uc-box"><small>수능 환산</small><b>${ok ? f(G) : '—'}</b></div>
-          <div class="uc-box"><small>내신</small><b>${ok ? f(H) : '—'}</b></div>
-          <div class="uc-box uc-prac"><small>실기 <b>${f(I)}</b></small>
-            ${evs.length ? `<div class="uc-ex">${evs.map(e => { const pt = cell(s, e.pts); return `<label><span>${esc(e.name)}</span><input type="number" step="any" inputmode="decimal" data-rec="${e.rec}" data-sheet="${esc(s)}" value="${recs[e.rec] ?? ''}" placeholder="기록"><em>${pt === '' || pt == null ? '' : f(pt) + '점'}</em></label>`; }).join('')}</div>` : '<p class="small muted mb0">실기 없음</p>'}</div>
-          <div class="uc-box uc-tot"><small>총점</small><b>${f(tot)}</b>${S.see && n(p.cut) != null && tot != null ? `<em class="${tot - p.cut >= 0 ? 'green' : 'red'}">최종 커트 ${f(p.cut, 2)} 대비 ${tot - p.cut >= 0 ? '+' : ''}${f(tot - p.cut, 2)}</em>` : ''}</div>
+          <div class="uc-box"><small>수능 환산</small><b data-o="G">—</b></div>
+          <div class="uc-box"><small>내신</small><b data-o="H">—</b></div>
+          <div class="uc-box uc-prac"><small>실기 <b data-o="I">0</b> / ${f(typeof p.p_prac === 'number' && p.p_prac ? p.p_prac : n(cell(s, 'Z')) != null ? cell(s, 'Z') - (n(cell(s, 'G')) || 0) - (n(cell(s, 'H')) || 0) : null)}</small>
+            ${evs.length ? `<div class="uc-ex">${evs.map(e => `<label><span>${esc(e.name)}</span><input type="number" step="any" inputmode="decimal" data-rec="${e.rec}" data-sheet="${esc(s)}" value="${recs[e.rec] ?? ''}" placeholder="기록"><em data-pt="${e.pts}"></em></label>`).join('')}</div>` : '<p class="small muted mb0">실기 없음</p>'}</div>
+          <div class="uc-box uc-tot"><small>총점</small><b data-o="tot">—</b><em data-o="mg"></em></div>
         </div>
-        <p class="help mb0">실기만점 총점 ${f(Z)} = 수능 환산 + 내신 + 실기 만점.${S.sid ? ' 실기 기록도 위 「저장」을 누르면 함께 저장돼요.' : ''}</p></div>
-      <div class="uc-sec"><div class="uc-st">입시 정보 (2026학년도)</div><div class="uc-info">${info.map(([k, v]) => `<div class="${String(v).length > 28 ? 'w' : ''}"><small>${k}</small><div>${esc(v).replace(/\n/g, '<br>')}</div></div>`).join('')}</div></div>
-      ${sh.table && sh.table.length ? `<div class="uc-sec"><div class="uc-st">실기 배점표 (2026학년도)</div><div class="scroll-x"><table class="uc-tbl"><tr>${sh.table.map(t => `<th colspan="3">${esc(t.name)}</th>`).join('')}</tr>
-        <tr class="sub">${sh.table.map(() => '<td>배점</td><td>남</td><td>여</td>').join('')}</tr>
-        ${Array.from({ length: Math.max(...sh.table.map(t => t.rows.length)) }, (_, i) => `<tr>${sh.table.map(t => { const r = t.rows[i]; return r ? `<td>${f(r[0])}</td><td class="${male ? 'on2' : ''}">${typeof r[1] === 'number' ? f(r[1]) : esc(r[1] ?? '')}</td><td class="${male ? '' : 'on2'}">${typeof r[2] === 'number' ? f(r[2]) : esc(r[2] ?? '')}</td>` : '<td></td><td></td><td></td>'; }).join('')}</tr>`).join('')}</table></div></div>` : ''}`;
+        <p class="help mb0" data-o="note"></p></div>
+      ${tbl.length ? `<div class="uc-sec"><div class="uc-st">실기 배점표 (2026학년도 · <span data-o="sex">${male ? '남' : '여'}</span> 기준 칸 진하게)</div><div class="scroll-x"><table class="uc-tbl j26-tbl"><tr>${tbl.map(t => `<th colspan="3">${esc(t.name)}</th>`).join('')}</tr>
+        <tr class="sub">${tbl.map(() => '<td>배점</td><td>남</td><td>여</td>').join('')}</tr>
+        ${Array.from({ length: Math.max(...tbl.map(t => t.rows.length)) }, (_, i) => `<tr>${tbl.map((t, ti) => { const r = t.rows[i]; return r ? `<td data-t="${ti}-${i}" data-c="p">${f(r[0])}</td><td data-t="${ti}-${i}" data-c="m" class="${male ? 'sx' : ''}">${typeof r[1] === 'number' ? f(r[1]) : esc(r[1] ?? '')}</td><td data-t="${ti}-${i}" data-c="f" class="${male ? '' : 'sx'}">${typeof r[2] === 'number' ? f(r[2]) : esc(r[2] ?? '')}</td>` : '<td></td><td></td><td></td>'; }).join('')}</tr>`).join('')}</table></div>
+        <p class="help mb0">초록색 줄이 입력한 기록이 받은 점수예요.</p></div>` : ''}
+      <div class="uc-sec"><div class="uc-st">입시 정보 (2026학년도)</div><div class="uc-info">${info.map(([k, v]) => `<div class="${String(v).length > 28 ? 'w' : ''}"><small>${k}</small><div>${esc(v).replace(/\n/g, '<br>')}</div></div>`).join('')}</div></div>`;
     $('[data-x]', box).onclick = () => { S.open = null; drawTable(); };
-    // 표 줄의 실기 칸 등은 그대로 두고, 카드 안 값만 다시 그림
-    const keepFocus = document.activeElement?.dataset?.rec;
-    if (keepFocus) { const el = $(`[data-rec="${keepFocus}"]`, box); if (el) { el.focus(); const v = el.value; el.value = ''; el.value = v; } }
+    updateDetail();
+  }
+  function updateDetail() {
+    const box = $('[data-detail]', root); if (!box) return;
+    const p = S.byId.get(S.open); const sh = S.data.sheets[p.sheet]; const s = p.sheet;
+    const O = k => $(`[data-o="${k}"]`, box);
+    const ok = hasScore();
+    const G = ok ? n(cell(s, 'G')) : null, H = ok ? n(cell(s, 'H')) : null, I = n(cell(s, 'I')) || 0;
+    O('G').textContent = f(G); O('H').textContent = ok ? f(H) : '—'; O('I').textContent = f(I);
+    const anyRec = Object.keys(S.rec[s] || {}).length > 0;
+    const tot = ok ? (G || 0) + (H || 0) + I : anyRec ? I : null;
+    O('tot').textContent = f(tot);
+    const mg = O('mg');
+    if (S.see && ok && n(p.cut) != null && tot != null) { const m = tot - p.cut; mg.className = m >= 0 ? 'green' : 'red'; mg.textContent = `최종 커트 ${f(p.cut, 2)} 대비 ${m >= 0 ? '+' : ''}${f(m, 2)}`; }
+    else { mg.className = ''; mg.textContent = ok ? '' : '수능 성적을 넣으면 수능 환산과 합쳐져요'; }
+    O('note').textContent = ok ? `실기만점 총점 ${f(cell(s, 'Z'))} = 수능 환산 + 내신 + 실기 만점.${S.sid ? ' 실기 기록도 위 「저장」을 누르면 함께 저장돼요.' : ''}` : '수능 성적(또는 표본)을 넣으면 수능 환산 점수도 계산돼요.';
+    // 종목별 배점 + 배점표 표시
+    box.querySelectorAll('.j26-tbl td.hit').forEach(td => td.classList.remove('hit'));
+    const evs = sh.events || []; const tbl = sh.table || [];
+    evs.forEach((e, i) => {
+      const pt = cell(s, e.pts); const em = $(`[data-pt="${e.pts}"]`, box);
+      const has = (S.rec[s] || {})[e.rec] != null;
+      if (em) em.textContent = has && pt !== '' && pt != null ? f(pt) + '점' : '';
+      if (!has || n(pt) == null) return;
+      // 같은 순서의 배점표(이름이 비슷하면 그쪽)에서 그 점수 줄을 찾아 칠함
+      let ti = tbl.findIndex(t => String(t.name).replace(/\s/g, '') === String(e.name).replace(/\s/g, ''));
+      if (ti < 0) ti = i < tbl.length ? i : -1;
+      if (ti < 0) return;
+      const ri = tbl[ti].rows.findIndex(r => typeof r[0] === 'number' && Math.abs(r[0] - pt) < 1e-6);
+      const sc = (S.inp.D || '남') === '여' ? 'f' : 'm';
+      if (ri >= 0) box.querySelectorAll(`.j26-tbl td[data-t="${ti}-${ri}"]`).forEach(td => { if (td.dataset.c === 'p' || td.dataset.c === sc) td.classList.add('hit'); });
+    });
   }
 }

@@ -452,3 +452,8 @@ tr.jx>td{padding:0!important;text-align:left!important;white-space:normal!import
 .seg.seg-year{background:#fff;border:1px solid var(--line);margin-top:-6px}
 .seg.seg-year a{font-size:13.5px;padding:7px}
 .seg.seg-year a.on{background:var(--ink);color:#fff}
+.j26-pct{display:flex;flex-wrap:wrap;align-items:center;gap:5px;padding-bottom:12px;margin-bottom:12px;border-bottom:1px dashed var(--line)}
+.j26-pct b{font-size:13px;margin-right:4px}
+.j26-pct .pill{padding:6px 11px;cursor:pointer}
+.j26-tbl td.sx{font-weight:800;color:var(--ink)}
+.j26-tbl td.hit{background:#16a34a!important;color:#fff!important;font-weight:800}
