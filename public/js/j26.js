@@ -208,9 +208,9 @@ export function start(root, init) {
           <div class="uc-box uc-tot" data-o="totbox"><span class="j26-vd" data-o="vd"></span><small>총점</small><b data-o="tot">—</b><em data-o="mg"></em></div>
         </div>
         <p class="help mb0" data-o="note"></p></div>
-      ${tbl.length ? `<div class="uc-sec"><div class="uc-st">실기 배점표 (2026학년도 · <span data-o="sex">${male ? '남' : '여'}</span> 기준 칸 진하게)</div><div class="scroll-x"><table class="uc-tbl j26-tbl"><tr>${tbl.map(t => `<th colspan="3">${esc(t.name)}</th>`).join('')}</tr>
+      ${tbl.length ? `<div class="uc-sec"><div class="uc-st">실기 배점표 (2026학년도)</div><div class="scroll-x"><table class="uc-tbl j26-tbl"><tr>${tbl.map(t => `<th colspan="3">${esc(t.name)}</th>`).join('')}</tr>
         <tr class="sub">${tbl.map(() => '<td>배점</td><td>남</td><td>여</td>').join('')}</tr>
-        ${Array.from({ length: Math.max(...tbl.map(t => t.rows.length)) }, (_, i) => `<tr>${tbl.map((t, ti) => { const r = t.rows[i]; return r ? `<td data-t="${ti}-${i}" data-c="p">${f(r[0])}</td><td data-t="${ti}-${i}" data-c="m" class="${male ? 'sx' : ''}">${typeof r[1] === 'number' ? f(r[1]) : esc(r[1] ?? '')}</td><td data-t="${ti}-${i}" data-c="f" class="${male ? '' : 'sx'}">${typeof r[2] === 'number' ? f(r[2]) : esc(r[2] ?? '')}</td>` : '<td></td><td></td><td></td>'; }).join('')}</tr>`).join('')}</table></div>
+        ${Array.from({ length: Math.max(...tbl.map(t => t.rows.length)) }, (_, i) => `<tr>${tbl.map((t, ti) => { const r = t.rows[i]; return r ? `<td data-t="${ti}-${i}" data-c="p">${f(r[0])}</td><td data-t="${ti}-${i}" data-c="m">${typeof r[1] === 'number' ? f(r[1]) : esc(r[1] ?? '')}</td><td data-t="${ti}-${i}" data-c="f">${typeof r[2] === 'number' ? f(r[2]) : esc(r[2] ?? '')}</td>` : '<td></td><td></td><td></td>'; }).join('')}</tr>`).join('')}</table></div>
         <p class="help mb0">초록색 줄이 입력한 기록이 받은 점수예요.</p></div>` : ''}
       <div class="uc-sec"><div class="uc-st">입시 정보 (2026학년도)</div><div class="uc-info">${info.map(([k, v]) => `<div class="${String(v).length > 28 ? 'w' : ''}"><small>${k}</small><div>${esc(v).replace(/\n/g, '<br>')}</div></div>`).join('')}</div></div>`;
     $('[data-x]', box).onclick = () => { S.open = null; drawTable(); };

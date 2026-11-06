@@ -474,5 +474,12 @@ tr.jx>td{padding:0!important;text-align:left!important;white-space:normal!import
 .jt td.reg,.jt td.reg span{font-weight:700;color:var(--ink)}
 .jt td.reg span{color:var(--ink2)}
 .jt td.nm a,.jt td.nm a b{font-weight:800;color:var(--ink)}
-.jt tbody td:nth-child(4),.jt tbody td:nth-child(5),.jt tbody td:nth-child(6),.jt tbody td:nth-child(7),.j26t tbody td:nth-child(8){font-weight:700;color:var(--ink)}
-.jt tr.jx td{font-weight:normal}
+.jt>tbody>tr:not(.jx)>td:nth-child(4),.jt>tbody>tr:not(.jx)>td:nth-child(5),.jt>tbody>tr:not(.jx)>td:nth-child(6),.jt>tbody>tr:not(.jx)>td:nth-child(7),.j26t>tbody>tr:not(.jx)>td:nth-child(8){font-weight:700;color:var(--ink)}
+/* 2026 실기 배점표: 배점만 진하게, 남·여 기록은 보통 글씨, 칸 나누기 (정시 표 줄 색·hover가 번지지 않게 범위를 좁힘) */
+.jt tr.jx .j26-tbl tr td,.j26-tbl tr td{font-weight:400;color:var(--ink);background:#fff;border:1px solid #ead3d7}
+.jt tr.jx .j26-tbl tr:nth-child(even):not(.sub) td{background:#fffafa}
+.jt tr.jx .j26-tbl tr td[data-c="p"],.j26-tbl tr td[data-c="p"]{font-weight:800;background:#fdeef0}
+.jt tr.jx .j26-tbl tr.sub td,.j26-tbl tr.sub td{font-weight:800;background:#ffe9ec;color:var(--red-d)}
+.jt tr.jx .j26-tbl tr td[data-c="p"],.jt tr.jx .j26-tbl tr.sub td:nth-child(3n+1){border-left:2px solid #b4313f}
+.jt tr.jx .j26-tbl th{border-left:2px solid #fff;border-right:0}
+.jt tr.jx .j26-tbl tr td.hit{background:#16a34a;color:#fff;font-weight:800}
